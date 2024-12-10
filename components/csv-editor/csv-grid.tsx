@@ -16,32 +16,79 @@ interface CsvGridProps {
 }
 
 export function CsvGrid({ initialData = [] }: CsvGridProps) {
-  const [originalHeaders, setOriginalHeaders] = useState<string[]>(['Column 1']);
+  const [originalHeaders, setOriginalHeaders] = useState<string[]>([
+    'Field Code',
+    'field_type',
+    'data',
+    'label',
+    'visibility',
+    'message',
+    'default',
+    'validation',
+    'list_type',
+    'list_value',
+    'multi_group',
+    'hidden',
+    'Link Setup',
+    'Update Setup'
+  ]);
+
   const [originalRows, setOriginalRows] = useState<CsvRow[]>(
-    initialData.length > 0 ? initialData : [{ id: '1', data: [''] }]
+    initialData.length > 0 ? initialData : [{
+      id: '1',
+      data: ['fieldCode001', '', 'DATA_FIELD_001', '', '', '', '', '', '', '', '', '', '', '']
+    }]
   );
-  
-  // Display data in transposed format
+
+  // Helper function to generate next field code
+  const generateNextFieldCode = () => {
+    const existingFieldCodes = originalRows.map(row => row.data[0])
+      .filter(code => code?.startsWith('fieldCode'))
+      .map(code => {
+        const numStr = code?.replace('fieldCode', '');
+        return numStr ? parseInt(numStr, 10) : 0;
+      });
+    
+    const maxNumber = Math.max(0, ...existingFieldCodes);
+    const nextNumber = maxNumber + 1;
+    return `fieldCode${String(nextNumber).padStart(3, '0')}`;
+  };
+
+  // Helper function to generate unique data value
+  const generateDataValue = (fieldCode: string) => {
+    const number = fieldCode.replace('fieldCode', '');
+    return `DATA_FIELD_${number}`;
+  };
+
+  const addRow = () => {
+    const newFieldCode = generateNextFieldCode();
+    const newDataValue = generateDataValue(newFieldCode);
+    
+    // Create a new row with empty values for all columns
+    const newRowData = new Array(originalHeaders.length).fill('');
+    // Set the field code in the first column
+    newRowData[0] = newFieldCode;
+    // Set the data value in the third column (index 2)
+    newRowData[2] = newDataValue;
+    
+    setOriginalRows(current => [
+      ...current,
+      {
+        id: `row-${current.length + 1}`,
+        data: newRowData,
+      },
+    ]);
+  };
+
   const transposedRows = transposeData(originalHeaders, originalRows);
 
   const updateCell = (rowIndex: number, cellIndex: number, value: string) => {
     const updatedTransposed = [...transposedRows];
     updatedTransposed[rowIndex].data[cellIndex] = value;
     
-    // Convert back to original format to update state
     const { headers, rows } = untransposeData(updatedTransposed);
     setOriginalHeaders(headers);
     setOriginalRows(rows);
-  };
-
-  const addRow = () => {
-    setOriginalRows(current => [
-      ...current,
-      {
-        id: `row-${current.length + 1}`,
-        data: Array(originalHeaders.length).fill(''),
-      },
-    ]);
   };
 
   const addColumn = () => {
