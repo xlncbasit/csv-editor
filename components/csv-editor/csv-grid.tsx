@@ -10,28 +10,25 @@ import {
   untransposeData,
   type CsvRow 
 } from '@/lib/csv-utils';
+import { useToast } from '@/hooks/use-toast';
+
+interface TransposeOptions {
+  hideFieldCode?: boolean;
+  hideEmpty?: boolean;
+  hiddenFields?: {[key: string]: boolean};
+}
 
 interface CsvGridProps {
   initialData?: CsvRow[];
 }
 
 export function CsvGrid({ initialData = [] }: CsvGridProps) {
-  const [originalHeaders, setOriginalHeaders] = useState<string[]>([
-    'Field Code',
-    'field_type',
-    'data',
-    'label',
-    'visibility',
-    'message',
-    'default',
-    'validation',
-    'list_type',
-    'list_value',
-    'multi_group',
-    'hidden',
-    'Link Setup',
-    'Update Setup'
-  ]);
+  const { toast } = useToast();
+  const [originalHeaders, setOriginalHeaders] = useState<string[]>(['Column 1']);
+  const [hiddenFields, setHiddenFields] = useState<{[key: string]: boolean}>({
+    "fieldCode": true,
+    "empty": true
+  });
 
   const [originalRows, setOriginalRows] = useState<CsvRow[]>(
     initialData.length > 0 ? initialData : [{
@@ -60,15 +57,16 @@ export function CsvGrid({ initialData = [] }: CsvGridProps) {
     return `DATA_FIELD_${number}`;
   };
 
-  const addRow = () => {
+  // In csv-grid.tsx
+
+  // In csv-grid.tsx
+const addRow = (fieldType: string) => {
     const newFieldCode = generateNextFieldCode();
     const newDataValue = generateDataValue(newFieldCode);
     
-    // Create a new row with empty values for all columns
-    const newRowData = new Array(originalHeaders.length).fill('');
-    // Set the field code in the first column
+    const newRowData = new Array(Math.max(originalHeaders.length, 14)).fill('');
     newRowData[0] = newFieldCode;
-    // Set the data value in the third column (index 2)
+    newRowData[1] = fieldType;      // Now uses the selected field type
     newRowData[2] = newDataValue;
     
     setOriginalRows(current => [
@@ -78,17 +76,43 @@ export function CsvGrid({ initialData = [] }: CsvGridProps) {
         data: newRowData,
       },
     ]);
+
+    toast({
+      title: "Row Added",
+      description: `Added new row with field code ${newFieldCode} and type ${fieldType}`,
+    });
   };
 
-  const transposedRows = transposeData(originalHeaders, originalRows);
+  const visibleTransposedRows = transposeData(originalHeaders, originalRows, {
+    hiddenFields,
+    hideFieldCode: hiddenFields.fieldCode,
+    hideEmpty: hiddenFields.empty
+  });
+
+  const toggleFieldVisibility = (field: string) => {
+    setHiddenFields(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
 
   const updateCell = (rowIndex: number, cellIndex: number, value: string) => {
-    const updatedTransposed = [...transposedRows];
+    const updatedTransposed = [...visibleTransposedRows];
     updatedTransposed[rowIndex].data[cellIndex] = value;
     
     const { headers, rows } = untransposeData(updatedTransposed);
+    
+    // Preserve hidden fields when updating
+    const updatedRows = rows.map((row, idx) => ({
+      ...row,
+      data: originalRows[idx] ? [
+        hiddenFields.fieldCode ? originalRows[idx].data[0] : row.data[0],
+        ...row.data.slice(1)
+      ] : row.data
+    }));
+
     setOriginalHeaders(headers);
-    setOriginalRows(rows);
+    setOriginalRows(updatedRows);
   };
 
   const addColumn = () => {
@@ -100,29 +124,59 @@ export function CsvGrid({ initialData = [] }: CsvGridProps) {
         data: [...row.data, ''],
       }))
     );
+
+    toast({
+      title: "Column Added",
+      description: `Added new column "${newHeader}"`,
+    });
   };
 
   const handleDownload = () => {
-    downloadCsv(originalRows, originalHeaders);
+    try {
+      downloadCsv(originalRows, originalHeaders);
+      toast({
+        title: "Download Started",
+        description: "Your CSV file is being downloaded",
+      });
+    } catch (error) {
+      toast({
+        title: "Download Failed",
+        description: "There was an error downloading your CSV file",
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      const lines = content.split('\n');
-      if (lines.length > 0) {
-        const headers = lines[0].split(',').map(header => header.trim());
-        setOriginalHeaders(headers);
-        
-        const rows = lines.slice(1).map((line, index) => ({
-          id: `row-${index}`,
-          data: line.split(',').map(cell => cell.trim()),
-        }));
-        setOriginalRows(rows);
-      }
-    };
-    reader.readAsText(file);
+  const handleUpload = async (file: File) => {
+    try {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        const lines = content.split('\n');
+        if (lines.length > 0) {
+          const headers = lines[0].split(',').map(header => header.trim());
+          setOriginalHeaders(headers);
+          
+          const rows = lines.slice(1).map((line, index) => ({
+            id: `row-${index}`,
+            data: line.split(',').map(cell => cell.trim()),
+          }));
+          setOriginalRows(rows);
+
+          toast({
+            title: "File Uploaded",
+            description: `Successfully loaded ${rows.length} rows of data`,
+          });
+        }
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      toast({
+        title: "Upload Failed",
+        description: "There was an error uploading your CSV file",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -132,6 +186,8 @@ export function CsvGrid({ initialData = [] }: CsvGridProps) {
         onAddRow={addRow}
         onDownload={handleDownload}
         onUpload={handleUpload}
+        hiddenFields={hiddenFields}
+        onToggleVisibility={toggleFieldVisibility}
       />
       
       <div className="border rounded-lg overflow-hidden bg-background">
@@ -158,18 +214,21 @@ export function CsvGrid({ initialData = [] }: CsvGridProps) {
               </tr>
             </thead>
             <tbody>
-              {transposedRows.map((row, rowIndex) => (
-                <tr key={row.id} className="border-b last:border-b-0">
-                  {row.data.map((cell, cellIndex) => (
-                    <td key={`${row.id}-${cellIndex}`} className="p-0 border-r last:border-r-0">
-                      <CsvCell
-                        value={cell}
-                        onChange={(value) => updateCell(rowIndex, cellIndex, value)}
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
+            {visibleTransposedRows.map((row, rowIndex) => (
+              <tr key={row.id} className="border-b last:border-b-0">
+                {row.data.map((cell, cellIndex) => (
+                  <td key={`${row.id}-${cellIndex}`} className="p-0 border-r last:border-r-0">
+                    <CsvCell
+                      value={cell}
+                      onChange={(value) => updateCell(rowIndex, cellIndex, value)}
+                      // Pass the row type based on the first cell in the row
+                      rowType={row.data[0]?.toLowerCase()}
+                      columnHeader={visibleTransposedRows[rowIndex]?.data[0]}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
             </tbody>
           </table>
         </div>
@@ -177,3 +236,11 @@ export function CsvGrid({ initialData = [] }: CsvGridProps) {
     </div>
   );
 }
+
+
+
+
+
+
+
+
