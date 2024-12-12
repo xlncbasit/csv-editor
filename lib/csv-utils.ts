@@ -114,18 +114,20 @@ export function transposeData(
   options?: TransposeOptions
 ): CsvRow[] {
   try {
-    // Get field names from third row (index 2)
     const fieldNames = rows[2]?.data || [];
-    
-    // Use remaining rows after first two for data
     const dataRows = rows.slice(3);
     
+    // Create transposed structure while maintaining field codes
     const result = headers
       .map((header, headerIndex) => {
+        // Skip hidden fields
         if (options?.hiddenFields?.[header]) return null;
         
-        const rowData = dataRows.map(row => row.data[headerIndex] || '');
-        
+        // Preserve field codes for first column
+        const rowData = headerIndex === 0 
+          ? dataRows.map(row => row.data[0])
+          : dataRows.map(row => row.data[headerIndex] || '');
+
         return {
           id: `transposed-${headerIndex}`,
           data: [fieldNames[headerIndex] || '', ...rowData]
@@ -135,24 +137,28 @@ export function transposeData(
 
     return result;
   } catch (error) {
-    console.error('Error transposing data:', error);
+    console.error('Transpose error:', error);
     return [];
   }
 }
 
 export function untransposeData(transposedRows: CsvRow[]): UntransposeResult {
   try {
-    // Extract headers from first row
     const headers = transposedRows.map(row => row.data[0] || '');
-    
-    // Calculate number of data rows
     const dataRowCount = Math.max(...transposedRows.map(row => row.data.length - 1));
     
-    // Create rows
-    const rows: CsvRow[] = Array.from({ length: dataRowCount }, (_, rowIndex) => ({
-      id: `untransposed-${rowIndex}`,
-      data: transposedRows.map(tRow => tRow.data[rowIndex + 1] || '')
-    }));
+    // Preserve field codes while untransposing
+    const rows: CsvRow[] = Array.from({ length: dataRowCount }, (_, rowIndex) => {
+      const rowData = transposedRows.map(tRow => {
+        const value = tRow.data[rowIndex + 1] || '';
+        return value;
+      });
+
+      return {
+        id: `untransposed-${rowIndex}`,
+        data: rowData
+      };
+    });
 
     return { headers, rows };
   } catch (error) {

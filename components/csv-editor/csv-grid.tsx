@@ -135,33 +135,40 @@ export function CsvGrid({ initialData = [] }: CsvGridProps) {
   }, [originalHeaders, originalRows, hiddenFields]);
 
   const handleCellUpdate = useCallback((rowIndex: number, cellIndex: number, value: string) => {
-    const updatedTransposed = [...visibleTransposedRows];
+    // Create deep copies to avoid reference issues
+    const updatedTransposed = JSON.parse(JSON.stringify(visibleTransposedRows));
     updatedTransposed[rowIndex].data[cellIndex] = value;
-
+  
+    // Get metadata before untranspose
     const fieldCode = getFieldCodeForCell(rowIndex, cellIndex);
     const columnHeader = getColumnHeader(rowIndex);
     
+    // Update special field types
     if (columnHeader === 'list_type' && fieldCode) {
       setListTypes(prev => ({ ...prev, [fieldCode]: value }));
     }
-
+  
     if (columnHeader === 'field_type' && fieldCode) {
       setFieldTypes(prev => ({ ...prev, [fieldCode]: value }));
     }
-    
+  
+    // Untranspose while preserving structure
     const { headers, rows } = untransposeData(updatedTransposed);
     
+    // Preserve field codes and merge with new data
+    const updatedRows = rows.map((row, idx) => ({
+      id: originalRows[idx]?.id || `row-${idx}`,
+      data: originalRows[idx] ? [
+        // Keep original field code
+        originalRows[idx].data[0],
+        // Merge rest of the data
+        ...row.data.slice(1)
+      ] : row.data
+    }));
+  
     setOriginalHeaders(headers);
-    setOriginalRows(prev => 
-      rows.map((row, idx) => ({
-        ...row,
-        data: prev[idx] ? [
-          hiddenFields.fieldCode ? prev[idx].data[0] : row.data[0],
-          ...row.data.slice(1)
-        ] : row.data
-      }))
-    );
-  }, [visibleTransposedRows, hiddenFields.fieldCode]);
+    setOriginalRows(updatedRows);
+  }, [visibleTransposedRows, originalRows]);
 
 
 
