@@ -1,5 +1,5 @@
 import { CsvRow, CellMapping, MappedCell, CellPosition } from './types';
-
+import { FieldMetadata } from './types';
 export class CsvPositionMapper {
   private mappings: Map<string, CellMapping> = new Map();
   private originalData: CsvRow[];
@@ -11,8 +11,31 @@ export class CsvPositionMapper {
     this.generateMappings();
   }
 
+  private fieldMetadata: Map<string, FieldMetadata> = new Map();
+  private updateFieldMetadata() {
+    this.originalData.forEach(row => {
+      const fieldCode = row.data[0];
+      const fieldType = row.data[1]; // Field type is in column 1
+      
+      if (fieldCode && fieldType) {
+        this.fieldMetadata.set(fieldCode, {
+          fieldType,
+          columnHeader: this.headers[1]?.toLowerCase() || '',
+        });
+      }
+    });
+  }
+  public getCellMetadata(fieldCode: string): FieldMetadata | undefined {
+    return this.fieldMetadata.get(fieldCode);
+  }
+
+
+  
+
   private generateMappings() {
     this.mappings.clear();
+    this.updateFieldMetadata(); // Ensure metadata is updated before generating mappings
+  
     this.originalData.forEach((row, originalRow) => {
       row.data.forEach((value, originalCol) => {
         const fieldCode = this.originalData[originalRow]?.data[0] || '';
@@ -20,19 +43,28 @@ export class CsvPositionMapper {
         
         const transposedRow = originalCol;
         const transposedCol = originalRow;
-
+  
+        const fieldMetadata = this.getCellMetadata(fieldCode);
+        const fieldType = fieldMetadata?.fieldType || '';
+  
+        // Log the columnHeader and fieldType
+        console.log(`ColumnHeader: ${columnHeader}, FieldType: ${fieldType}`);
+  
         const mapping: CellMapping = {
           original: { row: originalRow, col: originalCol },
           transposed: { row: transposedRow, col: transposedCol },
           fieldCode,
-          columnHeader
+          columnHeader,
+          fieldType // Include fieldType in the mapping
         };
-
+  
         const key = this.createMappingKey(originalRow, originalCol);
         this.mappings.set(key, mapping);
       });
     });
   }
+  
+  
 
   private createMappingKey(row: number, col: number): string {
     return `${row}-${col}`;

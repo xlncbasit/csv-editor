@@ -65,31 +65,25 @@ export function parseCsvString(csvContent: string): ParseCsvResult {
   try {
     const lines = csvContent
       .split(/\r?\n/)
-      .filter(line => line.trim());
+      
     
     if (!lines.length) {
       return { headers: [], rows: [], headerRows: [] };
     }
 
     // Extract header rows and content
-    const headerRows = lines.slice(0, 2).map(line => parseCsvLine(line));
-    const headers = parseCsvLine(lines[2] || '');
+    const headerRows = lines.slice(0, 3).map(line => parseCsvLine(line));
+    const headers = parseCsvLine(lines[3] || '');
     
     // Parse data rows starting from 4th row (index 3)
     const rows = lines.slice(3).map((line, index) => {
-      try {
-        const fields = parseCsvLine(line);
-        while (fields.length < headers.length) fields.push('');
-        if (fields.length > headers.length) fields.length = headers.length;
-        
-        return {
-          id: `row-${index}`,
-          data: fields
-        };
-      } catch (error) {
-        throw new Error(`Invalid CSV format at line ${index + 1}`);
-      }
+      const fields = parseCsvLine(line);
+      return {
+        id: `row-${index}`,
+        data: fields
+      };
     });
+
 
     return { headers, rows, headerRows };
   } catch (error) {
@@ -105,19 +99,31 @@ export function parseCsvString(csvContent: string): ParseCsvResult {
 export function downloadCsv(
   rows: CsvRow[], 
   headers: string[], 
-  headerRows: string[][] = [],
-  filename: string = 'data.csv'
+  headerRows: string[][] = []
 ) {
   try {
+    // Create final rows array starting with header rows
     const preparedRows = [
-      ...headerRows.map(formatCsvRow),
-      formatCsvRow(headers),
-      ...rows.map(row => formatCsvRow(row.data))
+      ...headerRows,
+      
+      ...rows.map(row => row.data)
     ];
 
-    const csvContent = preparedRows.join('\n');
+    // Remove duplicates by filtering rows with same content
+
+    const csvContent = preparedRows
+      .map(row => row
+        .map(cell => {
+          if (!cell) return '';
+          const needsQuotes = /[",\n\r]/.test(cell);
+          return needsQuotes ? `"${cell.replace(/"/g, '""')}"` : cell;
+        })
+        .join(',')
+      )
+      .join('\n');
+
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    saveAs(blob, filename);
+    saveAs(blob, 'data.csv');
   } catch (error) {
     console.error('CSV download error:', error);
     throw error;

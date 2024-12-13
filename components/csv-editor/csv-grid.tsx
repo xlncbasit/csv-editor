@@ -2,38 +2,64 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { CsvHeader } from './csv-header';
-import { CsvCell } from './csv-cell';
+import { EnhancedCsvCell } from './csv-cell';
 import { CsvPositionMapper } from './csv-position-mapper';
 import { CsvRow, MappedCell } from './types';
-import { debounce } from 'lodash';
-import { downloadCsv, parseCsvLine, parseCsvString } from '@/lib/csv-utils';
+import { downloadCsv, parseCsvString } from '@/lib/csv-utils';
 import { useToast } from '@/hooks/use-toast';
+
+interface ListTypeState {
+  [fieldCode: string]: {
+    type: string;
+    values: string[];
+  };
+}
 
 export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
   const { toast } = useToast();
   const [headerRows, setHeaderRows] = useState<string[][]>([]);
-  const [originalHeaders, setOriginalHeaders] = useState<string[]>(['Column 1']);
+  const [displayHeaders, setDisplayHeaders] = useState<string[]>([]);
+  const [originalHeaders, setOriginalHeaders] = useState<string[]>([]);
   const [originalRows, setOriginalRows] = useState<CsvRow[]>(
     initialData.length > 0 ? initialData : [{
       id: '1',
-      data: ['fieldCode001', '', 'DATA_FIELD_001', '', '', '', '', '', '', '', '', '', '', '']
+      data: ['fieldCode001', '', 'DATA_FIELD_001', '', '', '', '', '', '', '', '']
     }]
   );
   const [transposedData, setTransposedData] = useState<MappedCell[][]>([]);
   const [hiddenFields, setHiddenFields] = useState<{[key: string]: boolean}>({
-    fieldCode: true,
+    fieldCode: false,
     empty: true
   });
-  const [listTypes, setListTypes] = useState<{[key: string]: string}>({});
+  const [listTypes, setListTypes] = useState<ListTypeState>({});
   const [fieldTypes, setFieldTypes] = useState<{[key: string]: string}>({});
 
-  // Initialize position mapper
-  const positionMapper = useMemo(() => 
-    new CsvPositionMapper(originalRows, originalHeaders),
-    [originalRows, originalHeaders]
-  );
+  // Initialize position mapper with enhanced metadata
+  const positionMapper = useMemo(() => {
+    const mapper = new CsvPositionMapper(originalRows, originalHeaders);
+    const labelRow = originalRows[3]?.data || originalHeaders;
+    setDisplayHeaders(labelRow);
 
-  // Initialize transposed data
+    // Initialize list types from data
+    const initialListTypes: ListTypeState = {};
+    originalRows.forEach(row => {
+      const fieldCode = row.data[0];
+      const fieldType = row.data[1];
+      const listType = row.data[8]; // Assuming list_type is in column 8
+      const listValue = row.data[9]; // Assuming list_value is in column 9
+
+      if (fieldType === 'CAT' && listType) {
+        initialListTypes[fieldCode] = {
+          type: listType,
+          values: listValue ? listValue.split('#') : []
+        };
+      }
+    });
+    setListTypes(initialListTypes);
+
+    return mapper;
+  }, [originalRows, originalHeaders]);
+
   useEffect(() => {
     const mappedTransposed = positionMapper.transposeWithMapping();
     setTransposedData(mappedTransposed);
@@ -51,21 +77,49 @@ export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
         newValue
       );
 
-      // Get mapping for updated cell
       const mapping = positionMapper.getMappingForTransposedPosition(transposedRow, transposedCol);
       
       if (mapping) {
-        // Handle special field updates
-        if (mapping.columnHeader === 'list_type') {
-          setListTypes(prev => ({ ...prev, [mapping.fieldCode]: newValue }));
+        if (mapping.columnHeader === 'list_type' && mapping.fieldType === 'CAT') {
+          setListTypes(prev => ({
+            ...prev,
+            [mapping.fieldCode]: {
+              type: newValue,
+              values: prev[mapping.fieldCode]?.values || []
+            }
+          }));
         }
+        
+        if (mapping.columnHeader === 'list_value' && mapping.fieldType === 'CAT') {
+          setListTypes(prev => ({
+            ...prev,
+            [mapping.fieldCode]: {
+              type: prev[mapping.fieldCode]?.type || 'Fixed',
+              values: newValue.split('#')
+            }
+          }));
+        }
+
         if (mapping.columnHeader === 'field_type') {
           setFieldTypes(prev => ({ ...prev, [mapping.fieldCode]: newValue }));
+          
+          // Reset list type data if field type changes from CAT
+          if (newValue !== 'CAT') {
+            setListTypes(prev => {
+              const updated = { ...prev };
+              delete updated[mapping.fieldCode];
+              return updated;
+            });
+          }
         }
       }
 
       setOriginalRows(updatedOriginal);
       setTransposedData(updatedTransposed);
+      
+      if (mapping?.original.row === 3) {
+        setDisplayHeaders(updatedOriginal[3].data);
+      }
     } catch (error) {
       toast({
         title: "Error Updating Cell",
@@ -75,6 +129,7 @@ export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
     }
   }, [positionMapper, toast]);
 
+  // Rest of the handlers remain the same
   const handleAddRow = useCallback((fieldType: string) => {
     try {
       const { updatedOriginal, updatedTransposed, newFieldCode } = 
@@ -82,6 +137,13 @@ export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
 
       setOriginalRows(updatedOriginal);
       setTransposedData(updatedTransposed);
+
+      if (fieldType === 'CAT') {
+        setListTypes(prev => ({
+          ...prev,
+          [newFieldCode]: { type: 'Fixed', values: [] }
+        }));
+      }
 
       toast({
         title: "Row Added",
@@ -101,9 +163,10 @@ export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
       const { updatedOriginal, updatedTransposed, updatedHeaders } = 
         positionMapper.addColumn();
 
+      setOriginalHeaders(updatedHeaders);
       setOriginalRows(updatedOriginal);
       setTransposedData(updatedTransposed);
-      setOriginalHeaders(updatedHeaders);
+      setDisplayHeaders(prev => [...prev, `Column ${prev.length + 1}`]);
 
       toast({
         title: "Column Added",
@@ -118,40 +181,59 @@ export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
     }
   }, [positionMapper, toast]);
 
-  const toggleFieldVisibility = (field: string) => {
-    setHiddenFields(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
-
+  // Existing handlers remain the same
   const handleDownload = () => {
     try {
-      downloadCsv(originalRows, originalHeaders, headerRows);
+      const dataForDownload = originalRows.map(row => ({
+        ...row,
+        data: row.data.map(cell => cell || '')
+      }));
+      downloadCsv(dataForDownload, originalHeaders, headerRows);
+      
       toast({
         title: "Download Started",
-        description: "Your CSV file is being downloaded",
+        description: "Your CSV file is being downloaded"
       });
     } catch (error) {
       toast({
         title: "Download Failed",
-        description: "There was an error downloading your CSV file",
-        variant: "destructive",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive"
       });
     }
   };
-
 
   const handleUpload = async (file: File) => {
     try {
       const reader = new FileReader();
       reader.onload = (e) => {
         const content = e.target?.result as string;
-        const { headers, rows, headerRows } = parseCsvString(content);
+        const { headers, rows, headerRows: parsedHeaderRows } = parseCsvString(content);
         
         setOriginalHeaders(headers);
         setOriginalRows(rows);
-        setHeaderRows(headerRows);
+        setHeaderRows(parsedHeaderRows);
+        
+        if (rows[3]) {
+          setDisplayHeaders(rows[3].data);
+        }
+        
+        // Initialize list types from uploaded data
+        const uploadedListTypes: ListTypeState = {};
+        rows.forEach(row => {
+          const fieldCode = row.data[0];
+          const fieldType = row.data[1];
+          const listType = row.data[8];
+          const listValue = row.data[9];
+
+          if (fieldType === 'CAT' && listType) {
+            uploadedListTypes[fieldCode] = {
+              type: listType,
+              values: listValue ? listValue.split('#') : []
+            };
+          }
+        });
+        setListTypes(uploadedListTypes);
         
         toast({
           title: "File Uploaded",
@@ -168,6 +250,12 @@ export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
     }
   };
 
+  const toggleFieldVisibility = (field: string) => {
+    setHiddenFields(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-4">
@@ -183,44 +271,54 @@ export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
       <div className="border rounded-lg overflow-hidden bg-background">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b">
-                {transposedData[0]?.map((cell, index) => (
+          <thead>
+            <tr className="border-b bg-black color-white">
+              {originalRows.map((row, index) => {
+                const header = row.data[3]; // Extract the 4th column (index 3) from each row
+                return (
                   <th key={`header-${index}`} className="p-0 font-normal text-left">
-                    <CsvCell 
-                      value={index === 0 ? 'Field Name' : `Row ${index}`} 
-                      isHeader 
-                      onChange={() => {}} 
+                    <EnhancedCsvCell
+                      value={header}
+                      isHeader
+                      onChange={() => {}}
+                      mapping={{
+                        original: { row: index, col: 3 },
+                        transposed: { row: index, col: 0 },
+                        fieldCode: row.data[0] || '',
+                        columnHeader: header.toLowerCase()
+                      }}
                     />
                   </th>
-                ))}
-              </tr>
-            </thead>
+                );
+              })}
+            </tr>
+          </thead>
+
             <tbody>
               {transposedData.map((row, rowIndex) => (
-                <tr key={`row-${rowIndex}`} className="border-b last:border-b-0">
-                  {row.map((cell, cellIndex) => (
-                    <td 
-                      key={`cell-${rowIndex}-${cellIndex}`} 
-                      className={`p-0 border-r last:border-r-0 ${cellIndex === 0 ? 'bg-gray-50' : ''}`}
-                    >
-                      <CsvCell
-                        value={cell.value}
-                        onChange={(value) => handleCellUpdate(rowIndex, cellIndex, value)}
-                        rowType={cell.mapping.columnHeader}
-                        columnHeader={cell.mapping.columnHeader}
-                        fieldType={fieldTypes[cell.mapping.fieldCode]}
-                        fieldCode={cell.mapping.fieldCode}
-                        getListType={() => listTypes[cell.mapping.fieldCode]}
-                        onListTypeChange={(type) => {
-                          setListTypes(prev => ({
-                            ...prev,
-                            [cell.mapping.fieldCode]: type
-                          }));
-                        }}
-                      />
-                    </td>
-                  ))}
+                <tr key={`row-${rowIndex}`}>
+                  {row.map((cell, cellIndex) => {
+                    const metadata = positionMapper.getCellMetadata(cell.mapping.fieldCode);
+                    return (
+                      <td key={`cell-${rowIndex}-${cellIndex}`} className="p-0">
+                        <EnhancedCsvCell
+                          value={cell.value}
+                          mapping={cell.mapping}
+                          onChange={(value) => handleCellUpdate(rowIndex, cellIndex, value)}
+                          listTypes={listTypes}
+                          onListTypeChange={(fieldCode, type) => {
+                            setListTypes(prev => ({
+                              ...prev,
+                              [fieldCode]: {
+                                type,
+                                values: prev[fieldCode]?.values || []
+                              }
+                            }));
+                          }}
+                        />
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

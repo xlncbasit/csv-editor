@@ -13,6 +13,10 @@ export interface CsvRow {
     transposed: CellPosition;
     fieldCode: string;
     columnHeader: string;
+    fieldType?: string;
+    listType?: string;
+    listValues?: string[];
+
   }
   
   export interface MappedCell {
@@ -27,4 +31,12 @@ export interface CsvRow {
   export interface CellUpdateOptions {
     preserveFieldCodes?: boolean;
     validateFields?: boolean;
+  }
+
+  export interface FieldMetadata{
+    fieldType: string;
+    columnHeader: string;
+    listType?: string;
+    listValue?: string;
+    
   }

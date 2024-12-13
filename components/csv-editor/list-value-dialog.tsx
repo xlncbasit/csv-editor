@@ -1,33 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, X } from 'lucide-react';
-
 
 interface ListValueDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (values: string) => void;
   initialValues?: string;
-  
+  listType?: string;
 }
 
 export function ListValueDialog({ 
   open, 
   onOpenChange, 
   onSave,
-  initialValues 
+  initialValues,
+  listType 
 }: ListValueDialogProps) {
   const [values, setValues] = useState<string[]>(() => 
-    initialValues ? initialValues.split('#').filter(Boolean) : ['']
+    initialValues ? initialValues.split('#') : ['']
   );
-
-  useEffect(() => {
-    if (open) {
-      setValues(initialValues ? initialValues.split('#').filter(Boolean) : ['']);
-    }
-  }, [open, initialValues]);
 
   const handleAddValue = () => {
     setValues([...values, '']);
@@ -51,11 +45,20 @@ export function ListValueDialog({
     onOpenChange(false);
   };
 
+  const getPlaceholder = (index: number) => {
+    if (listType === 'Codeset') {
+      return 'Enter codeset value';
+    }
+    return `Value ${index + 1}`;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md bg-white">
         <DialogHeader>
-          <DialogTitle>Enter List Values</DialogTitle>
+          <DialogTitle>
+            {listType === 'Codeset' ? 'Enter Codeset Value' : 'Enter List Values'}
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 py-4">
           {values.map((value, index) => (
@@ -63,7 +66,7 @@ export function ListValueDialog({
               <Input
                 value={value}
                 onChange={(e) => handleValueChange(index, e.target.value)}
-                placeholder={`Value ${index + 1}`}
+                placeholder={getPlaceholder(index)}
                 className="flex-1"
               />
               {values.length > 1 && (
@@ -77,15 +80,17 @@ export function ListValueDialog({
               )}
             </div>
           ))}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddValue}
-            className="w-full"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Value
-          </Button>
+          {(listType === 'Fixed' || !listType) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddValue}
+              className="w-full"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Value
+            </Button>
+          )}
         </div>
         <DialogFooter>
           <Button onClick={handleSave}>Save</Button>
