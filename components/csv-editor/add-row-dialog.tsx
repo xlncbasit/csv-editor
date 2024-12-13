@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
 const FIELD_TYPES = [
-  'KEY', 'TYP', 'TAG', 'NAM', 'QTY', 'CAT', 
-  'GEN', 'IMG', 'REM', 'ALT', 'STA', 'TIM', 'REF'
+  'TAG', 'NAM', 'QTY', 'CAT', 
+  'GEN', 'IMG', 'REM', 'TIM'
 ];
 
 interface AddRowDialogProps {

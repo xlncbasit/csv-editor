@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ListValueDialog } from './list-value-dialog';
 import { cn } from '@/lib/utils';
+import { CellMapping } from './types';
 
 interface CsvCellProps {
   value: string;
@@ -19,30 +20,48 @@ interface CsvCellProps {
   classname?: string;
 }
 
+interface EnhancedCsvCellProps {
+  value: string;
+  mapping: CellMapping;
+  isHeader?: boolean;
+  onChange: (value: string) => void;
+  onFocus?: () => void;
+  className?: string;
+  listTypes?: {[key: string]: string};
+  onListTypeChange?: (fieldCode: string, type: string) => void;
+
+}
+
+
 const LIST_TYPES = ['Fixed', 'Codeset'];
 const FIELD_TYPES = [
-  'KEY', 'TYP', 'TAG', 'NAM', 'QTY', 'CAT', 
-  'GEN', 'IMG', 'REM', 'ALT', 'STA', 'TIM', 'REF'
+  'TAG', 'NAM', 'QTY', 'CAT', 
+  'GEN', 'IMG', 'REM', 'TIM'
 ];
 
-export function CsvCell({ 
+export function EnhancedCsvCell({ 
   value, 
+  mapping,
   isHeader, 
   onChange, 
-  onFocus, 
-  rowType, 
-  columnHeader, 
-  fieldType,
-  fieldCode, 
-  getListType, 
-  onListTypeChange,
-  classname 
-}: CsvCellProps) {
+  onFocus,
+  className,
+  listTypes = {},
+  onListTypeChange
+}: EnhancedCsvCellProps) {
+  console.log('Column Header:', mapping.columnHeader);
   const [editing, setEditing] = useState(false);
   const [cellValue, setCellValue] = useState(value);
   const [listDialogOpen, setListDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const cellRef = useRef<HTMLDivElement>(null);
+
+  const { columnHeader, fieldCode } = mapping;
+  const listType = listTypes[fieldCode];
+  const isFieldType = columnHeader.toLowerCase() === 'field_type';
+  const isListTypeCell = columnHeader.toLowerCase() === 'list_type';
+  const isListValueCell = columnHeader.toLowerCase() === 'list_value';
+  const isCatField = mapping.original.col === 1 && cellValue === 'CAT';
 
   useEffect(() => {
     setCellValue(value);
@@ -62,16 +81,9 @@ export function CsvCell({
     } else if (e.key === 'Escape') {
       setCellValue(value);
       setEditing(false);
-    } else if (e.key === 'Tab') {
-      finishEditing();
-      if (cellRef.current) {
-        const nextCell = e.shiftKey 
-          ? cellRef.current.previousElementSibling
-          : cellRef.current.nextElementSibling;
-        (nextCell as HTMLElement)?.focus();
-      }
     }
   };
+
 
   const finishEditing = () => {
     setEditing(false);
@@ -80,44 +92,37 @@ export function CsvCell({
     }
   };
 
-  const handleDoubleClick = () => {
-    if (!isHeader) {
-      setEditing(true);
-      onFocus?.();
-    }
-  };
 
   const getCellClassName = () => {
     return cn(
       'px-4 py-2 min-w-[150px] h-full text-sm',
       isHeader ? 'font-semibold bg-[#41C1CF] text-black' : 'hover:bg-[#f4f4f4] transition-colors',
-      columnHeader === 'list_type' && fieldType === 'CAT' && 'bg-blue-100',
-      columnHeader === 'list_value' && fieldType === 'CAT' && getListType?.() === 'Fixed' && 'bg-green-100',
-      columnHeader === 'list_value' && fieldType === 'CAT' && getListType?.() === 'Codeset' && 'bg-gray-100',
-      classname
+      isListTypeCell && isCatField && 'bg-blue-100',
+      isListValueCell && isCatField && listType === 'Fixed' && 'bg-green-100',
+      isListValueCell && isCatField && listType === 'Codeset' && 'bg-gray-100',
+      className
     );
   };
 
-  // Handle list_type cell for CAT field_type
-  if (columnHeader === 'list_type' && !isHeader && fieldType === 'CAT') {
+  // Handle list type selection
+  if (isListTypeCell && !isHeader) {
     return (
-      <div className="p-2 bg-blue-100">
+      <div className={cn("p-2", "bg-blue-50")}>
         <Select 
-          value={cellValue}
+          value={listType || ''}
           onValueChange={(newValue) => {
-            setCellValue(newValue);
             onChange(newValue);
-            onListTypeChange?.(newValue);
+            if (onListTypeChange) {
+              onListTypeChange(fieldCode, newValue);
+            }
           }}
         >
-          <SelectTrigger className="w-full bg-white border focus:ring-2 focus:ring-gray-200">
+          <SelectTrigger className="w-full bg-white">
             <SelectValue placeholder="Select list type" />
           </SelectTrigger>
-          <SelectContent className="bg-white border">
+          <SelectContent>
             {LIST_TYPES.map((type) => (
-              <SelectItem key={type} value={type} className="hover:bg-gray-50">
-                {type}
-              </SelectItem>
+              <SelectItem key={type} value={type}>{type}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -125,36 +130,48 @@ export function CsvCell({
     );
   }
 
-  // Handle list_value cell
-  if (columnHeader === 'list_value' && !isHeader && fieldType === 'CAT') {
-    const listType = getListType?.();
-    if (listType === 'Codeset') {
-      return <div className="px-4 py-2 bg-gray-100">Codeset values</div>;
-    }
-    
+  // Handle list value editing
+  if (isListValueCell && !isHeader && listType) {
+    const bgColorClass = listType === 'Fixed' ? 'bg-green-50' : 
+                        listType === 'Codeset' ? 'bg-gray-50' : 'bg-white';
+  
     return (
       <>
         <div 
-          className="px-4 py-2 cursor-pointer hover:bg-muted/50 bg-green-100"
-          onDoubleClick={() => setListDialogOpen(true)}
+          className={cn(
+            "px-4 py-2 cursor-pointer group relative",
+            bgColorClass
+          )}
+          onDoubleClick={() => listType === 'Fixed' && setListDialogOpen(true)}
         >
-          {cellValue || 'Click to edit values'}
+          {listType === 'Codeset' ? (
+            <span className="text-gray-600">Codeset values</span>
+          ) : (
+            <>
+              {cellValue || 'Double-click to edit values'}
+              <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </>
+          )}
         </div>
-        <ListValueDialog
-          open={listDialogOpen}
-          onOpenChange={setListDialogOpen}
-          onSave={(newValue) => {
-            setCellValue(newValue);
-            onChange(newValue);
-          }}
-          initialValues={cellValue}
-        />
+        {listType === 'Fixed' && (
+          <ListValueDialog
+            open={listDialogOpen}
+            onOpenChange={setListDialogOpen}
+            onSave={(newValue) => {
+              setCellValue(newValue);
+              onChange(newValue);
+            }}
+            initialValues={cellValue}
+          />
+        )}
       </>
     );
   }
 
-  // Handle field_type cell
-  if (rowType === 'field_type' && editing && !isHeader) {
+
+
+  // Handle field type selection
+  if (isFieldType && editing && !isHeader) {
     return (
       <div className="p-0">
         <Select 
@@ -196,22 +213,30 @@ export function CsvCell({
     );
   }
 
-  // Regular cell display
   return (
     <div 
       ref={cellRef}
-      className={getCellClassName()} 
-      onDoubleClick={handleDoubleClick}
+      className={cn(
+        'px-4 py-2 min-w-[150px] h-full text-sm',
+        isHeader ? 'font-semibold bg-[#41C1CF] text-black' : 'hover:bg-[#f4f4f4] transition-colors',
+        className
+      )}
+      onDoubleClick={() => !isHeader && setEditing(true)}
       tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          handleDoubleClick();
-        }
-      }}
       role="gridcell"
       aria-selected={editing}
     >
       {cellValue}
     </div>
   );
+}
+
+// For backward compatibility
+export function CsvCell(props: CsvCellProps) {
+  return <EnhancedCsvCell {...props} mapping={{
+    original: { row: 0, col: 0 },
+    transposed: { row: 0, col: 0 },
+    fieldCode: props.fieldCode || '',
+    columnHeader: props.columnHeader || ''
+  }} />;
 }

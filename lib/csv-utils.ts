@@ -16,6 +16,15 @@ export interface UntransposeResult {
   rows: CsvRow[];
 }
 
+export interface ParseCsvResult {
+  headers: string[];
+  rows: CsvRow[];
+  headerRows: string[][];
+}
+
+/**
+ * Parse a CSV line handling quoted fields and escapes
+ */
 export function parseCsvLine(line: string): string[] {
   const fields: string[] = [];
   let field = '';
@@ -49,57 +58,64 @@ export function parseCsvLine(line: string): string[] {
   return fields;
 }
 
-export function parseCsvString(csvContent: string): CsvRow[] {
+/**
+ * Parse CSV string content into structured data
+ */
+export function parseCsvString(csvContent: string): ParseCsvResult {
   try {
     const lines = csvContent
       .split(/\r?\n/)
       .filter(line => line.trim());
     
-    if (!lines.length) return [];
+    if (!lines.length) {
+      return { headers: [], rows: [], headerRows: [] };
+    }
+
+    // Extract header rows and content
+    const headerRows = lines.slice(0, 2).map(line => parseCsvLine(line));
+    const headers = parseCsvLine(lines[2] || '');
     
-    const fieldCount = parseCsvLine(lines[0]).length;
-    
-    return lines.map((line, index) => {
+    // Parse data rows starting from 4th row (index 3)
+    const rows = lines.slice(3).map((line, index) => {
       try {
         const fields = parseCsvLine(line);
-        
-        // Normalize field count
-        while (fields.length < fieldCount) fields.push('');
-        if (fields.length > fieldCount) fields.length = fieldCount;
+        while (fields.length < headers.length) fields.push('');
+        if (fields.length > headers.length) fields.length = headers.length;
         
         return {
           id: `row-${index}`,
           data: fields
         };
       } catch (error) {
-        console.error(`Error parsing line ${index + 1}:`, error);
         throw new Error(`Invalid CSV format at line ${index + 1}`);
       }
     });
+
+    return { headers, rows, headerRows };
   } catch (error) {
     console.error('CSV parsing error:', error);
     throw error;
   }
 }
 
-export function downloadCsv(rows: CsvRow[], headers: string[], filename: string = 'data.csv') {
-  try {
-    const preparedRows = rows.map(row => 
-      row.data.map(cell => {
-        if (!cell) return '';
-        const needsQuotes = /[",\n\r]/.test(cell);
-        return needsQuotes ? `"${cell.replace(/"/g, '""')}"` : cell;
-      })
-    );
 
-    const csvContent = [
-      headers.map(header => {
-        const needsQuotes = /[",\n\r]/.test(header);
-        return needsQuotes ? `"${header.replace(/"/g, '""')}"` : header;
-      }).join(','),
-      ...preparedRows.map(row => row.join(','))
-    ].join('\n');
-    
+/**
+ * Download data as CSV file
+ */
+export function downloadCsv(
+  rows: CsvRow[], 
+  headers: string[], 
+  headerRows: string[][] = [],
+  filename: string = 'data.csv'
+) {
+  try {
+    const preparedRows = [
+      ...headerRows.map(formatCsvRow),
+      formatCsvRow(headers),
+      ...rows.map(row => formatCsvRow(row.data))
+    ];
+
+    const csvContent = preparedRows.join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, filename);
   } catch (error) {
@@ -108,23 +124,44 @@ export function downloadCsv(rows: CsvRow[], headers: string[], filename: string 
   }
 }
 
+
+/**
+ * Format a row of data for CSV output
+ */
+function formatCsvRow(row: string[]): string {
+  return row.map(cell => {
+    if (!cell) return '';
+    const needsQuotes = /[",\n\r]/.test(cell);
+    return needsQuotes ? `"${cell.replace(/"/g, '""')}"` : cell;
+  }).join(',');
+}
+
+/**
+ * Transpose data considering field codes and visibility options
+ */
 export function transposeData(
   headers: string[], 
   rows: CsvRow[], 
-  options?: TransposeOptions
+  options: TransposeOptions = {}
 ): CsvRow[] {
   try {
-    const fieldNames = rows[2]?.data || [];
-    const dataRows = rows.slice(3);
+    const fieldNames = rows[0]?.data || [];
+    const dataRows = rows.slice(1);
     
-    // Create transposed structure while maintaining field codes
+    // Create transposed structure
     const result = headers
       .map((header, headerIndex) => {
         // Skip hidden fields
         if (options?.hiddenFields?.[header]) return null;
         
-        // Preserve field codes for first column
-        const rowData = headerIndex === 0 
+        // Skip empty columns if hideEmpty is true
+        if (options?.hideEmpty && 
+            dataRows.every(row => !row.data[headerIndex])) {
+          return null;
+        }
+        
+        // Build row data
+        const rowData = headerIndex === 0 && !options?.hideFieldCode
           ? dataRows.map(row => row.data[0])
           : dataRows.map(row => row.data[headerIndex] || '');
 
@@ -142,12 +179,14 @@ export function transposeData(
   }
 }
 
+/**
+ * Convert transposed data back to original format
+ */
 export function untransposeData(transposedRows: CsvRow[]): UntransposeResult {
   try {
     const headers = transposedRows.map(row => row.data[0] || '');
     const dataRowCount = Math.max(...transposedRows.map(row => row.data.length - 1));
     
-    // Preserve field codes while untransposing
     const rows: CsvRow[] = Array.from({ length: dataRowCount }, (_, rowIndex) => {
       const rowData = transposedRows.map(tRow => {
         const value = tRow.data[rowIndex + 1] || '';
@@ -167,6 +206,9 @@ export function untransposeData(transposedRows: CsvRow[]): UntransposeResult {
   }
 }
 
+/**
+ * Validate CSV data structure
+ */
 export function validateCsvData(headers: string[], rows: CsvRow[]): boolean {
   if (!headers.length || !rows.length) return false;
   
@@ -177,6 +219,9 @@ export function validateCsvData(headers: string[], rows: CsvRow[]): boolean {
   );
 }
 
+/**
+ * Get statistics for a column
+ */
 export function getColumnStats(rows: CsvRow[], columnIndex: number) {
   try {
     const values = rows.map(row => row.data[columnIndex]).filter(Boolean);
@@ -193,6 +238,9 @@ export function getColumnStats(rows: CsvRow[], columnIndex: number) {
   }
 }
 
+/**
+ * Sanitize cell value to prevent formula injection
+ */
 export function sanitizeCsvValue(value: string): string {
   return value
     .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
