@@ -272,7 +272,7 @@ export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b bg-black color-white">
+            <tr className="border-b bg-black text-white">
               {originalRows.map((row, index) => {
                 const header = row.data[3]; // Extract the 4th column (index 3) from each row
                 return (

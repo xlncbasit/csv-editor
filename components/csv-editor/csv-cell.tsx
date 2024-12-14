@@ -36,9 +36,8 @@ interface EnhancedCsvCellProps {
 }
 
 const FIELD_TYPES = [
-  'KEY', 'TYP', 'TAG', 'NAM', 'QTY', 
-  'CAT', 'GEN', 'IMG', 'REM', 'ALT', 
-  'STA', 'TIM', 'REF'
+  'TAG', 'NAM', 'QTY', 'CAT', 
+  'GEN', 'IMG', 'REM', 'TIM'
 ];
 
 const LIST_TYPES = ['Fixed', 'Codeset', 'Other'];
