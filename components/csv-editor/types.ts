@@ -26,6 +26,8 @@ export interface CsvRow {
   
   export interface CsvGridProps {
     initialData?: CsvRow[];
+    onDataChange: (newData: CsvRow[]) => void;
+
   }
   
   export interface CellUpdateOptions {

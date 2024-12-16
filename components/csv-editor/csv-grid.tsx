@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { CsvHeader } from './csv-header';
 import { EnhancedCsvCell } from './csv-cell';
 import { CsvPositionMapper } from './csv-position-mapper';
-import { CsvRow, MappedCell } from './types';
+import { CsvRow, MappedCell, CsvGridProps } from './types';
 import { downloadCsv, parseCsvString } from '@/lib/csv-utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,17 +15,22 @@ interface ListTypeState {
   };
 }
 
-export function CsvGrid({ initialData = [] }: { initialData?: CsvRow[] }) {
+
+
+export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
   const { toast } = useToast();
   const [headerRows, setHeaderRows] = useState<string[][]>([]);
   const [displayHeaders, setDisplayHeaders] = useState<string[]>([]);
   const [originalHeaders, setOriginalHeaders] = useState<string[]>([]);
   const [originalRows, setOriginalRows] = useState<CsvRow[]>(
-    initialData.length > 0 ? initialData : [{
-      id: '1',
-      data: ['fieldCode001', '', 'DATA_FIELD_001', '', '', '', '', '', '', '', '']
-    }]
+    initialData.length > 0 
+      ? initialData 
+      : [{
+          id: '1',
+          data: ['fieldCode001', '', 'DATA_FIELD_001', '', '', '', '', '', '', '', '']
+        }]
   );
+
   const [transposedData, setTransposedData] = useState<MappedCell[][]>([]);
   const [hiddenFields, setHiddenFields] = useState<{[key: string]: boolean}>({
     fieldCode: false,
