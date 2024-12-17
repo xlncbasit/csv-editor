@@ -1,66 +1,90 @@
-import React from 'react';
+'use client';
 
-interface SidebarParams {
-  orgKey?: string;
-  userKey?: string;
-  moduleKey?: string;
-  industry?: string;
-  subIndustry?: string;
-  error?: string;
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+
+interface ParameterBoxProps {
+  label: string;
+  value: string;
 }
 
-export default function ParametersSidebar({ 
-  params = {} as SidebarParams 
-}: { 
-  params?: SidebarParams 
-}) {
-  // Ensure params is an object, default to empty object if null/undefined
-  const safeParams = params || {};
+const ParameterBox = ({ label, value }: ParameterBoxProps) => (
+  <div className="bg-[#fdbb11] rounded-lg border-4 border-black p-3">
+    <div className="font-bold text-black text-sm mb-1">
+      {label}:
+    </div>
+    <div className="text-black text-sm break-words font-medium">
+      {value || 'Not specified'}
+    </div>
+  </div>
+);
+
+function SidebarContent() {
+  const searchParams = useSearchParams();
   
-  // Define display labels for parameters
-  const paramLabels: Record<string, string> = {
-    orgKey: "orgKey",
-    userKey: "userKey",
-    moduleKey: "moduleKey",
-    industry: "industry",
-    subIndustry: "subIndustry"
-  };
+  const parameters = [
+    { label: 'orgKey', value: searchParams.get('org_key') || 'ingentas.io' },
+    { label: 'userKey', value: searchParams.get('user_key') || 'srklite12@gmail.com' },
+    { label: 'moduleKey', value: searchParams.get('module_key') || 'FM_INFO_PRODUCT' },
+    { label: 'industry', value: searchParams.get('industry') || 'Manufacturing' },
+    { label: 'subIndustry', value: searchParams.get('subindustry') || 'Robotics and Automation' }
+  ];
 
   return (
-    <div className="w-90 bg-[#3A53A3] border-r-4 border-black p-5 flex-shrink-0">
-      <h2 className="text-white font-semibold text-lg mb-6">
-        Configuration Parameters
-      </h2>
-      
-      <div className="space-y-4">
-        {Object.entries(paramLabels).map(([key, label]) => {
-          const value = safeParams[key as keyof SidebarParams];
-          if (key === 'error') return null;
-          
-          return (
-            <div 
-              key={key}
-              className="bg-[#fdbb11] rounded-lg border-4 border-black p-3"
-            >
-              <div className="font-bold text-black text-sm mb-1">
-                {label}:
-              </div>
-              <div className="text-black text-sm break-words font-medium">
-                {value || 'Not specified'}
-              </div>
-            </div>
-          );
-        })}
+    <div className="h-screen w-64 bg-[#3A53A3] flex flex-col flex-shrink-0">
+      {/* Logo */}
+      <div className="p-4 border-b-4 border-black bg-black">
+        <div className="text-white text-xl font-bold">
+          fieldmobi.ai
+        </div>
       </div>
 
-      {safeParams.error && (
-        <div className="mt-4 p-3 bg-red-500 text-white rounded-lg border-2 border-black">
-          <span className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-white rounded-full" />
-            {safeParams.error} error
-          </span>
+      {/* Parameters Section */}
+      <div className="p-5 space-y-6">
+        <h2 className="text-white font-semibold text-lg mb-6">
+          Configuration Parameters
+        </h2>
+        
+        <div className="space-y-4">
+          {parameters.map((param) => (
+            <ParameterBox 
+              key={param.label}
+              label={param.label}
+              value={param.value}
+            />
+          ))}
         </div>
-      )}
+      </div>
     </div>
+  );
+}
+
+function SidebarSkeleton() {
+  return (
+    <div className="h-screen w-64 bg-[#3A53A3] flex flex-col flex-shrink-0">
+      <div className="p-4 border-b-4 border-black bg-black">
+        <div className="text-white text-xl font-bold">fieldmobi.ai</div>
+      </div>
+      <div className="p-5 space-y-6">
+        <div className="h-6 w-48 bg-gray-600 rounded animate-pulse" />
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div 
+              key={i} 
+              className="h-20 bg-gray-600 rounded-lg animate-pulse" 
+              style={{ animationDelay: `${i * 100}ms` }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Sidebar() {
+  return (
+    <Suspense fallback={<SidebarSkeleton />}>
+      <SidebarContent />
+    </Suspense>
   );
 }

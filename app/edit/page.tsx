@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CsvGrid } from '@/components/csv-editor/csv-grid';
 import { parseCsvString } from '@/lib/csv-utils';
 import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton';
+import { LoadingPage, PageSkeleton } from '@/components/loading-page';
 import { CsvRow } from '@/components/csv-editor/types';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useState, useEffect } from 'react';
 
 interface LoadConfigResponse {
   success: boolean;
@@ -14,20 +16,12 @@ interface LoadConfigResponse {
   error?: string;
 }
 
-interface ListTypeState {
-  [key: string]: {
-    type: string;
-    values: string[];
-  };
-}
-
-const EditPage = () => {
+function EditPageContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [initialData, setInitialData] = useState<CsvRow[]>([]);
-  const [listTypes, setListTypes] = useState<ListTypeState>({});
-  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     const loadConfig = async () => {
@@ -46,39 +40,20 @@ const EditPage = () => {
           throw new Error(data.error || 'Could not load configuration file');
         }
 
-        // Parse CSV content
-        const { headers, rows } = parseCsvString(data.csvContent);
+        const { rows } = parseCsvString(data.csvContent);
+        setInitialData(rows);
 
-        // Map rows to CsvRow[] format for CsvGrid
-        const transformedRows: CsvRow[] = rows.map((row, index) => ({
-          id: index.toString(), // Ensure each row has a unique ID
-          data: row.data,
-        }));
-
-        // Extract list types
-        const uploadedListTypes: ListTypeState = {};
-        rows.forEach(row => {
-          const fieldCode = row.data[0];
-          const fieldType = row.data[1];
-          const listType = row.data[8];
-          const listValue = row.data[9];
-
-          if (fieldType === 'CAT' && listType) {
-            uploadedListTypes[fieldCode] = {
-              type: listType,
-              values: listValue ? listValue.split('#') : [],
-            };
-          }
-        });
-
-        // Set state
-        setInitialData(transformedRows);
-        setListTypes(uploadedListTypes);
-      } catch (error) {
         toast({
-          title: 'Error',
-          description: error instanceof Error ? error.message : 'Failed to load configuration',
-          variant: 'destructive',
+          title: "Configuration Loaded",
+          description: `Successfully loaded ${rows.length} rows of data`,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unknown error occurred';
+        setError(message);
+        toast({
+          title: "Error",
+          description: message,
+          variant: "destructive",
         });
       } finally {
         setLoading(false);
@@ -88,38 +63,47 @@ const EditPage = () => {
     loadConfig();
   }, [searchParams, toast]);
 
-  const handleDataChange = () => {
-    setHasChanges(true);
-  };
+  if (error) {
+    return (
+      <div className="p-8">
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <PageSkeleton />;
+  }
 
   return (
     <main className="bg-[#41C1CF]">
-      
-
       <div className="max-w-6xl mx-auto py-8 px-4">
         <div className="space-y-4">
           <div className="bg-white p-6 rounded-[20px] border-2 border-black">
-            <h2 className="text-xl font-bold mb-4">Your Data</h2>
+            <h2 className="text-xl font-bold mb-4">Configuration Editor</h2>
             <p className="text-sm text-gray-600 mb-6">
               Edit your CSV files with this interactive editor. Double-click cells to edit, add rows and columns, and download your changes.
             </p>
-            
-            {loading ? (
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-full" />
-                <Skeleton className="h-[500px] w-full" />
-              </div>
-            ) : (
-              <CsvGrid 
-                initialData={initialData} 
-                onDataChange={handleDataChange}
-              />
-            )}
+            <CsvGrid 
+              initialData={initialData} 
+              onDataChange={(newData) => {
+                // Handle data changes
+                console.log('Data changed:', newData);
+              }}
+            />
           </div>
         </div>
       </div>
     </main>
   );
-};
+}
 
-export default EditPage;
+export default function EditPage() {
+  return (
+    <Suspense fallback={<LoadingPage />}>
+      <EditPageContent />
+    </Suspense>
+  );
+}
