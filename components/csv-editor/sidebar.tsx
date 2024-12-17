@@ -27,7 +27,7 @@ export default function ParametersSidebar({
   };
 
   return (
-    <div className="w-64 bg-[#3A53A3] border-r-4 border-black p-5 flex-shrink-0">
+    <div className="w-90 bg-[#3A53A3] border-r-4 border-black p-5 flex-shrink-0">
       <h2 className="text-white font-semibold text-lg mb-6">
         Configuration Parameters
       </h2>

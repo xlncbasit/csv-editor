@@ -2,56 +2,56 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const org_key = searchParams.get('org_key');
-    const module_key = searchParams.get('module_key');
+const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
+const TOMCAT_PATH = process.env.TOMCAT_PATH || '/opt/tomcat/webapps/ROOT/upload/configfiles';
 
-    if (!org_key || !module_key) {
+export async function POST(request: Request) {
+  try {
+    const { csvContent, org_key, module_key } = await request.json();
+
+    if (!csvContent || !org_key || !module_key) {
       return NextResponse.json({
         success: false,
         error: 'Missing required parameters'
       }, { status: 400 });
     }
 
-    // Construct the path to the config file
-    const filePath = path.join(
-      process.cwd(),
-      'data',
-      'users',
+    // Save to original location
+    const originalFilePath = path.join(
+      USER_DATA_PATH,
       org_key,
       module_key,
       'config.csv'
     );
 
-    console.log('Attempting to read file from:', filePath);
+    // Save to Tomcat directory
+    const tomcatFilePath = path.join(
+      TOMCAT_PATH,
+      org_key,
+      module_key,
+      'config.csv'
+    );
 
-    try {
-      // Check if file exists
-      await fs.access(filePath);
-    } catch {
-      console.log('File not found at path:', filePath);
-      return NextResponse.json({
-        success: false,
-        error: 'Configuration file not found'
-      }, { status: 404 });
-    }
+    // Ensure directories exist
+    await fs.mkdir(path.dirname(originalFilePath), { recursive: true });
+    await fs.mkdir(path.dirname(tomcatFilePath), { recursive: true });
 
-    // Read file content
-    const csvContent = await fs.readFile(filePath, 'utf-8');
-    console.log('CSV Content loaded:', csvContent);
+    // Save files
+    await Promise.all([
+      fs.writeFile(originalFilePath, csvContent, 'utf-8'),
+      fs.writeFile(tomcatFilePath, csvContent, 'utf-8')
+    ]);
 
     return NextResponse.json({
       success: true,
-      csvContent
+      message: 'CSV saved successfully to both locations'
     });
 
   } catch (error) {
-    console.error('Error loading config:', error);
+    console.error('Error saving CSV:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to load configuration'
+      error: 'Failed to save CSV file'
     }, { status: 500 });
   }
 }
