@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { CsvHeader } from './csv-header';
 import { EnhancedCsvCell } from './csv-cell';
 import { CsvPositionMapper } from './csv-position-mapper';
@@ -15,10 +16,11 @@ interface ListTypeState {
   };
 }
 
-
-
 export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  
+  // Your existing state declarations
   const [headerRows, setHeaderRows] = useState<string[][]>([]);
   const [displayHeaders, setDisplayHeaders] = useState<string[]>([]);
   const [originalHeaders, setOriginalHeaders] = useState<string[]>([]);
@@ -30,7 +32,6 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
           data: ['fieldCode001', '', 'DATA_FIELD_001', '', '', '', '', '', '', '', '']
         }]
   );
-
   const [transposedData, setTransposedData] = useState<MappedCell[][]>([]);
   const [hiddenFields, setHiddenFields] = useState<{[key: string]: boolean}>({
     fieldCode: false,
@@ -38,35 +39,101 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
   });
   const [listTypes, setListTypes] = useState<ListTypeState>({});
   const [fieldTypes, setFieldTypes] = useState<{[key: string]: string}>({});
+  
+  // Add auto-loading effect
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const org_key = searchParams.get('org_key');
+        const module_key = searchParams.get('module_key');
+        
+        if (!org_key || !module_key) {
+          throw new Error('Missing required parameters: org_key and module_key');
+        }
 
-  // Initialize position mapper with enhanced metadata
+        console.log('Loading config:', { org_key, module_key });
+
+        const response = await fetch(`/api/load-config?org_key=${org_key}&module_key=${module_key}`);
+        const data = await response.json();
+
+        if (!data.success || !data.csvContent) {
+          throw new Error(data.error || 'Could not load configuration file');
+        }
+
+        // Parse the CSV content
+        const { headers, rows, headerRows: parsedHeaderRows } = parseCsvString(data.csvContent);
+        console.log('Parsed data:', { 
+          headerCount: headers.length,
+          rowCount: rows.length,
+          headerRowCount: parsedHeaderRows.length 
+        });
+
+        // Update state with loaded data
+        setOriginalHeaders(headers);
+        setOriginalRows(rows);
+        setHeaderRows(parsedHeaderRows);
+
+        // Extract and set display headers
+        if (rows[3]) {
+          setDisplayHeaders(rows[3].data);
+        }
+
+        // Initialize list types from loaded data
+        const loadedListTypes: ListTypeState = {};
+        rows.forEach(row => {
+          const fieldCode = row.data[0];
+          const fieldType = row.data[1];
+          const listType = row.data[8];
+          const listValue = row.data[9];
+
+          if (fieldType === 'CAT' && listType) {
+            loadedListTypes[fieldCode] = {
+              type: listType,
+              values: listValue ? listValue.split('#') : []
+            };
+          }
+        });
+        setListTypes(loadedListTypes);
+
+        toast({
+          title: "Configuration Loaded",
+          description: `Successfully loaded ${rows.length} rows of data`,
+        });
+
+      } catch (error) {
+        console.error('Error loading config:', error);
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : 'Failed to load configuration',
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadConfig();
+  }, [searchParams, toast]);
+
+  // Your existing position mapper logic
   const positionMapper = useMemo(() => {
+    console.log('Initializing position mapper:', {
+      rowCount: originalRows.length,
+      headerCount: originalHeaders.length
+    });
+    
     const mapper = new CsvPositionMapper(originalRows, originalHeaders);
     const labelRow = originalRows[3]?.data || originalHeaders;
     setDisplayHeaders(labelRow);
 
-    // Initialize list types from data
-    const initialListTypes: ListTypeState = {};
-    originalRows.forEach(row => {
-      const fieldCode = row.data[0];
-      const fieldType = row.data[1];
-      const listType = row.data[8]; // Assuming list_type is in column 8
-      const listValue = row.data[9]; // Assuming list_value is in column 9
-
-      if (fieldType === 'CAT' && listType) {
-        initialListTypes[fieldCode] = {
-          type: listType,
-          values: listValue ? listValue.split('#') : []
-        };
-      }
-    });
-    setListTypes(initialListTypes);
-
     return mapper;
   }, [originalRows, originalHeaders]);
 
+  // Update transposed data when mapper changes
   useEffect(() => {
     const mappedTransposed = positionMapper.transposeWithMapping();
+    console.log('Generated transposed data:', {
+      rowCount: mappedTransposed.length,
+      colCount: mappedTransposed[0]?.length || 0
+    });
     setTransposedData(mappedTransposed);
   }, [positionMapper]);
 

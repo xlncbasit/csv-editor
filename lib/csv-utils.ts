@@ -63,8 +63,10 @@ export function parseCsvLine(line: string): string[] {
  */
 export function parseCsvString(csvContent: string): ParseCsvResult {
   try {
+    console.log('Parsing CSV content:', csvContent.substring(0, 100));
     const lines = csvContent
       .split(/\r?\n/)
+    console.log('Number of lines:', lines.length);
       
     
     if (!lines.length) {
@@ -74,6 +76,7 @@ export function parseCsvString(csvContent: string): ParseCsvResult {
     // Extract header rows and content
     const headerRows = lines.slice(0, 2).map(line => parseCsvLine(line));
     const headers = parseCsvLine(lines[2] || '');
+    console.log('Extracted headers:', headers);
     
     // Parse data rows starting from 4th row (index 3)
     const rows = lines.slice(2).map((line, index) => {
