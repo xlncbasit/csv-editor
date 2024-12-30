@@ -43,6 +43,11 @@ const readAndParseCSV = async (filePath: string) => {
   console.log('File content length:', fileContent.length);
   console.log('First 100 characters:', fileContent.slice(0, 100));
 
+  const lines = fileContent.split('\n');
+  const dataContent = lines.slice(3).join('\n');
+  console.log('Processing from row 4, starting with:', dataContent.slice(0, 100));
+
+
   const parseResult = Papa.parse(fileContent, {
     header: true,
     skipEmptyLines: true,
