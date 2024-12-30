@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  basepath: '/edit',
+  basePath: '/edit',
   swcMinify: true,
   typescript: {
     ignoreBuildErrors: false,
