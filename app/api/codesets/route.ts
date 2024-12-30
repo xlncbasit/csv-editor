@@ -98,9 +98,9 @@ export async function GET(request: Request) {
         code: row.ACT_00000150?.trim() || row.ACT_00000141?.trim() || '',
         parentPath: row.parentPath?.trim() || ''
       };
-      console.log('Processed codeset:', codeset.codeset);
+      console.log('Processed codeset:', codeset.parentPath);
       return codeset;
-    }).filter(item => item.codeset && item.type);
+    }).filter(item => item.codeset && item.type && item.parentPath);
 
     console.log('Total processed codesets:', codesets.length);
 
