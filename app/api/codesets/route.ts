@@ -21,7 +21,7 @@ const getFilePath = (org_key: string | null, module_key: string | null) => {
   if (!org_key || !module_key) {
     throw new Error('Invalid path: org_key and module_key are required');
   }
-  const filePath = path.join(process.cwd(), USER_DATA_PATH, org_key, module_key, 'codesetvalues.csv');
+  const filePath = path.join( USER_DATA_PATH, org_key, module_key, 'codesetvalues.csv');
   console.log('Constructed file path:', filePath);
   return filePath;
 };
