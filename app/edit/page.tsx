@@ -36,7 +36,7 @@ function EditPageContent() {
         }
         console.log('Initiating fetch request...');
 
-        const response = await fetch(`/api/load-config?org_key=${org_key}&module_key=${module_key}`,
+        const response = await fetch(`/edit/api/load-config?org_key=${org_key}&module_key=${module_key}`,
           {
             method: 'GET',
             headers: {
