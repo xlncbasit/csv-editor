@@ -53,7 +53,7 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
 
         console.log('Loading config:', { org_key, module_key });
 
-        const response = await fetch(`/api/load-config?org_key=${org_key}&module_key=${module_key}`);
+        const response = await fetch(`/edit/api/load-config?org_key=${org_key}&module_key=${module_key}`);
         const data = await response.json();
 
         if (!data.success || !data.csvContent) {

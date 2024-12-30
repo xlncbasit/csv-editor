@@ -3,260 +3,207 @@
 @tailwind utilities;
 
 @layer base {
-  .container {
-    display: flex;
-    height: 100vh;
-    flex-direction: column;
-    width: 100%;
-    max-width: 100%;
-    overflow: hidden;
+  :root {
+    /* System Colors */
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.75rem;
+
+    /* Brand Colors */
+    --fm-yellow: 42 98% 53%;
+    --fm-teal: 186 59% 53%;
+    --fm-blue: 228 47% 44%;
+    --fm-grey: 0 0% 96%;
+
+    /* Chart Colors */
+    --chart-1: 215 100% 50%;
+    --chart-2: 142 100% 50%;
+    --chart-3: 47 100% 50%;
+    --chart-4: 316 100% 50%;
+    --chart-5: 191 100% 50%;
+
+    /* Animation Timings */
+    --transition-fast: 150ms;
+    --transition-normal: 250ms;
+    --transition-slow: 350ms;
   }
 
-  .content-wrapper {
-    display: flex;
-    flex: 1;
-    min-height: 0;
-    overflow: hidden;
-    position: relative;
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .fieldmobi-container {
+    @apply flex min-h-screen flex-col w-full max-w-full overflow-hidden;
   }
 
-  /* Sidebar Styles */
-  .params-sidebar {
-    width: 250px;
-    background: #3A53A3;
-    padding: 20px;
-    border-right: 4px solid #000000;
-    overflow-y: auto;
-    flex-shrink: 0;
-    transition: transform 0.3s ease;
+  .fieldmobi-sidebar {
+    @apply w-64 bg-[#3A53A3] flex flex-col flex-shrink-0 border-r-4 border-black overflow-y-auto;
   }
 
-  .params-sidebar h2 {
-    margin-bottom: 20px;
-    color: #ffffff;
-    font-weight: bold;
-    font-size: 1.2rem;
+  .fieldmobi-main {
+    @apply flex-1 bg-[#41C1CF] overflow-auto p-6;
   }
 
-  .param-item {
-    margin-bottom: 15px;
-    padding: 12px;
-    border: 4px solid #000000;
-    border-radius: 10px;
-    background: #fdbb11;
-    animation: fadeIn 0.3s ease-out;
+  .fieldmobi-card {
+    @apply bg-white rounded-[20px] border-2 border-black shadow-lg p-6;
   }
 
-  .param-label {
-    font-weight: 800;
-    color: #000000;
-    margin-bottom: 5px;
-    display: block;
-    font-size: 0.9rem;
+  .fieldmobi-button {
+    @apply inline-flex items-center justify-center rounded-[25px] px-4 py-2 text-sm font-medium transition-colors 
+    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50
+    bg-[#3A53A3] text-white hover:bg-[#2A437F] border-2 border-black;
   }
 
-  .param-value {
-    color: #000000;
-    word-break: break-all;
-    font-size: 0.9rem;
-    font-weight: 500;
+  .fieldmobi-input {
+    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm
+    ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium
+    placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2
+    focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
 
-  /* Main Content Area */
-  .main-container {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background-color: #41C1CF;
-    min-height: 0;
-    overflow: hidden;
-    padding: 20px;
+  .fieldmobi-table {
+    @apply w-full border-collapse bg-white text-sm;
   }
 
-  /* Header Styles */
-  .header {
-    background-color: #000000;
-    width: 100%;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 20px;
-    border-bottom: 4px solid #000000;
+  .fieldmobi-th {
+    @apply border-b bg-black text-left align-middle font-medium text-white p-4;
   }
 
-  .logo {
-    color: #ffffff;
-    font-weight: bold;
-    font-size: 1.5rem;
+  .fieldmobi-td {
+    @apply border-b p-4 align-middle;
   }
 
-  /* Configuration Grid */
-  .config-grid {
-    flex: 1;
-    overflow: auto;
-    background: white;
-    border: 4px solid #000000;
-    border-radius: 10px;
-    padding: 20px;
-    margin-top: 20px;
+  .fieldmobi-cell {
+    @apply px-4 py-2 min-w-[150px] h-full text-sm transition-colors hover:bg-gray-50;
   }
 
-  .config-grid::-webkit-scrollbar {
-    width: 7px;
-    height: 10px;
+  .fieldmobi-cell-editing {
+    @apply p-0;
   }
 
-  .config-grid::-webkit-scrollbar-track {
-    box-shadow: inset 0 0 5px #41C1CF;
-    border-radius: 10px;
+  .fieldmobi-cell-input {
+    @apply w-full h-full px-4 py-2 border-2 border-[#3A53A3] focus:ring-2 focus:ring-[#41C1CF];
   }
 
-  .config-grid::-webkit-scrollbar-thumb {
-    background: #3A53A3;
-    border-radius: 10px;
+  .fieldmobi-toast {
+    @apply bg-white rounded-lg border-2 border-black shadow-lg;
+  }
+}
+
+@layer utilities {
+  .fieldmobi-scrollbar {
+    @apply scrollbar-thin scrollbar-thumb-[#3A53A3] scrollbar-track-[#41C1CF];
   }
 
-  /* Button Styles */
-  .btn {
-    background: linear-gradient(135deg, #000000, #1a1a1a);
-    color: #fdbb11;
-    padding: 12px 28px;
-    border: 2px solid #fdbb11;
-    border-radius: 25px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    box-shadow: 0 4px 15px rgba(253, 187, 17, 0.2);
+  .fieldmobi-no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 
-  .btn:hover {
-    background: #fdbb11;
-    color: #000000;
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(253, 187, 17, 0.3);
+  .fieldmobi-no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
+}
 
-  .btn:active {
-    transform: translateY(1px);
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3A53A3;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2A437F;
+}
+
+/* Animation keyframes */
+@keyframes slideIn {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
   }
-
-  .btn:disabled {
-    background: #e0e0e0;
-    border-color: #cccccc;
-    color: #888888;
-    cursor: not-allowed;
-    box-shadow: none;
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
+}
 
-  /* Cell Styles */
-  .cell {
-    padding: 8px 12px;
-    border: 1px solid #e0e0e0;
-    transition: all 0.2s ease;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
   }
-
-  .cell:hover {
-    background-color: rgba(65, 193, 207, 0.1);
+  to {
+    opacity: 1;
   }
+}
 
-  .cell-editing {
-    padding: 0;
-  }
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
 
-  .cell-input {
-    width: 100%;
-    height: 100%;
-    padding: 8px 12px;
-    border: 2px solid #41C1CF;
-    border-radius: 4px;
-    outline: none;
-  }
-
-  /* Animations */
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Responsive Styles */
-  @media (max-width: 768px) {
-    .params-sidebar {
-      position: absolute;
-      left: 0;
-      top: 0;
-      height: 100%;
-      transform: translateX(-100%);
-      z-index: 10;
-    }
-
-    .params-sidebar.active {
-      transform: translateX(0);
-    }
-
-    .main-container {
-      width: 100%;
-      padding: 10px;
-    }
-
-    .btn {
-      padding: 8px 16px;
-      font-size: 14px;
-    }
-  }
-
-  @media (max-width: 576px) {
-    .param-item {
-      padding: 8px;
-      margin-bottom: 10px;
-    }
-
-    .logo {
-      font-size: 1.2rem;
-    }
-
-    .header {
-      padding: 8px 12px;
-    }
-
-    .config-grid {
-      padding: 10px;
-    }
-
-    .cell {
-      padding: 6px 8px;
-      font-size: 0.9rem;
-    }
-  }
-
-  @media (max-width: 320px) {
-    .params-sidebar {
-      width: 200px;
-    }
-
-    .param-item {
-      padding: 6px;
-      margin-bottom: 8px;
-    }
-
-    .btn {
-      padding: 6px 12px;
-      font-size: 12px;
-    }
-
-    .cell {
-      padding: 4px 6px;
-      font-size: 0.8rem;
-    }
-  }
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
 }

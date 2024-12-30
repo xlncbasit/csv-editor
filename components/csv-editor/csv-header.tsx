@@ -63,7 +63,7 @@ export function CsvHeader({
   };
 
   return (
-    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="sticky top-0 z-10 w-full bg-background/0 backdrop-blur supports-[backdrop-filter]:bg-background/0">
       <div className="flex items-center justify-between border-b border-border/40 py-4">
         {/* Left side controls */}
         <div className="flex items-center gap-2">
