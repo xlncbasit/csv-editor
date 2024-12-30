@@ -34,7 +34,7 @@ export function AddRowDialog({ onAddRow }: AddRowDialogProps) {
           className="bg-white hover:bg-gray-50"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Row
+          Add Field
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md bg-white border shadow-lg">
@@ -87,7 +87,7 @@ export function AddRowDialog({ onAddRow }: AddRowDialogProps) {
             onClick={handleAddRow}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            Add Row
+            Add Field
           </Button>
         </DialogFooter>
       </DialogContent>

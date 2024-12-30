@@ -1,12 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
-  eslint: {
-    ignoreDuringBuilds: true,
+  reactStrictMode: true,
+  swcMinify: true,
+  typescript: {
+    ignoreBuildErrors: false,
   },
-  images: { unoptimized: true },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+  experimental: {
+    serverActions: true,
+  },
+  webpack: (config) => {
+    config.module.rules.push({
+      test: /\.csv$/,
+      loader: 'csv-loader',
+      options: {
+        dynamicTyping: true,
+        header: true,
+        skipEmptyLines: true
+      }
+    });
+    return config;
   }
 };
 

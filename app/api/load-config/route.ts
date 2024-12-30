@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
+import { join } from 'path';
+import { cwd } from 'process';
 
-const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
+const USER_DATA_PATH = join(cwd(),'data/users');
 
 export async function GET(request: Request) {
   try {
@@ -10,8 +12,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const org_key = searchParams.get('org_key');
     const module_key = searchParams.get('module_key');
+    console.log('Request headers:', Object.fromEntries(request.headers));
+    console.log('Request URL:', request.url);
+    console.log('Parameters:', { org_key, module_key });
+
 
     console.log('Loading config for:', { org_key, module_key });
+    console.log('Request received at /api/load-config:', request.url);
+
 
 
     // Validate required parameters

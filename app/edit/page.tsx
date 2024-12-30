@@ -25,16 +25,36 @@ function EditPageContent() {
 
   useEffect(() => {
     const loadConfig = async () => {
+      console.log('Starting loadConfig...');
       try {
         const org_key = searchParams.get('org_key');
         const module_key = searchParams.get('module_key');
+        console.log('Parameters:', { org_key, module_key });
 
         if (!org_key || !module_key) {
           throw new Error('Missing required parameters');
         }
+        console.log('Initiating fetch request...');
 
-        const response = await fetch(`/api/load-config?org_key=${org_key}&module_key=${module_key}`);
+        const response = await fetch(`/api/load-config?org_key=${org_key}&module_key=${module_key}`,
+          {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'Cache-Control': 'no-cache'
+            }
+          }
+        );
+        console.log('Response received:', response.status);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        console.log('Parsing response...');
         const data: LoadConfigResponse = await response.json();
+        console.log('Data received:', { success: data.success, hasContent: !!data.csvContent });
+        console.log('Fetching from API:', `/api/load-config?org_key=${org_key}&module_key=${module_key}`);
+
 
         if (!data.success || !data.csvContent) {
           throw new Error(data.error || 'Could not load configuration file');
@@ -48,6 +68,7 @@ function EditPageContent() {
           description: `Successfully loaded ${rows.length} rows of data`,
         });
       } catch (error) {
+        console.error('Load config error:', error);
         const message = error instanceof Error ? error.message : 'An unknown error occurred';
         setError(message);
         toast({

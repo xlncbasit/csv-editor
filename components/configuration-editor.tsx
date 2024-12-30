@@ -143,7 +143,7 @@ export function ConfigurationEditor() {
             </Button>
             <Button variant="outline" className="bg-white">
               <Plus className="w-4 h-4 mr-2" />
-              Add Row
+              Add Field
             </Button>
             <Button
               variant="outline"

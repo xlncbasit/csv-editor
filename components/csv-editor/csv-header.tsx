@@ -70,7 +70,7 @@ export function CsvHeader({
           <TooltipProvider delayDuration={300}>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button 
+                {/* <Button 
                   onClick={onAddColumn} 
                   variant="outline" 
                   size="sm"
@@ -78,7 +78,7 @@ export function CsvHeader({
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Column
-                </Button>
+                </Button> */}
               </TooltipTrigger>
               <TooltipContent>
                 <p>Add a new column to the CSV</p>
@@ -91,7 +91,7 @@ export function CsvHeader({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
+                {/* <Button
                   onClick={() => onToggleVisibility('fieldCode')}
                   variant="outline"
                   size="sm"
@@ -103,7 +103,7 @@ export function CsvHeader({
                     <Eye className="h-4 w-4 mr-2" />
                   )}
                   Field Codes
-                </Button>
+                </Button> */}
               </TooltipTrigger>
               <TooltipContent>
                 <p>Toggle field code column visibility</p>
@@ -112,7 +112,7 @@ export function CsvHeader({
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
+                {/* <Button
                   onClick={() => onToggleVisibility('empty')}
                   variant="outline"
                   size="sm"
@@ -124,7 +124,7 @@ export function CsvHeader({
                     <Eye className="h-4 w-4 mr-2" />
                   )}
                   Empty Columns
-                </Button>
+                </Button> */}
               </TooltipTrigger>
               <TooltipContent>
                 <p>Toggle empty column visibility</p>
