@@ -74,8 +74,8 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
         setHeaderRows(parsedHeaderRows);
 
         // Extract and set display headers
-        if (rows[3]) {
-          setDisplayHeaders(rows[3].data);
+        if (rows[4]) {
+          setDisplayHeaders(rows[4].data);
         }
 
         // Initialize list types from loaded data
@@ -121,7 +121,7 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
     });
     
     const mapper = new CsvPositionMapper(originalRows, originalHeaders);
-    const labelRow = originalRows[3]?.data || originalHeaders;
+    const labelRow = originalRows[4]?.data || originalHeaders;
     setDisplayHeaders(labelRow);
 
     return mapper;
