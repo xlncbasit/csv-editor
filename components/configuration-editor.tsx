@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+/* import { useState, useEffect } from 'react';
 import { Plus, Download, Upload, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -228,4 +228,4 @@ export function ConfigurationEditor() {
       </Card>
     </div>
   );
-}
+} */
