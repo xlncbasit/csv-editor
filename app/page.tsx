@@ -1,21 +1,20 @@
 'use client';
 
-import { Suspense } from 'react';
-import { LoadingPage } from '@/components/loading-page';
-import { ConfigurationEditor } from '@/components/configuration-editor';
+import { CsvGrid } from '@/components/csv-editor/csv-grid';
 
 function MainContent() {
+  const handleDataChange = (newData: any[]) => {
+    console.log('Data changed:', newData);
+    // Add any data change handling logic here
+  };
+
   return (
     <div className="flex-1">
-      <ConfigurationEditor />
+      <CsvGrid onDataChange={handleDataChange} />
     </div>
   );
 }
 
 export default function Home() {
-  return (
-    <Suspense fallback={<LoadingPage />}>
-      <MainContent />
-    </Suspense>
-  );
+  return <MainContent />;
 }
