@@ -1,6 +1,6 @@
-/** @type {import('next').NextConfig} */
+// next.config.js
 const nextConfig = {
-  output: 'export',
+  // Remove output: 'export'
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -9,5 +9,3 @@ const nextConfig = {
     removeConsole: process.env.NODE_ENV === "production",
   }
 };
-
-module.exports = nextConfig;
