@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import Papa from 'papaparse';
 
-const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
+const USER_DATA_PATH = 'data/users';
 
 interface Codeset {
   codeset: string;
@@ -98,9 +98,9 @@ export async function GET(request: Request) {
         code: row.ACT_00000150?.trim() || row.ACT_00000141?.trim() || '',
         parentPath: row.parentPath?.trim() || ''
       };
-      console.log('Processed codeset:', codeset.parentPath);
+      console.log('Processed codeset:', codeset.name);
       return codeset;
-    }).filter(item => item.codeset && item.type && item.parentPath);
+    }).filter(item => item.codeset && item.type);
 
     console.log('Total processed codesets:', codesets.length);
 
