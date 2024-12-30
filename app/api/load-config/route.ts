@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
 
-const USER_DATA_PATH = 'data/users';
+const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
 
 export async function GET(request: Request) {
   try {
