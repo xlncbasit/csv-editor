@@ -33,9 +33,6 @@ export function ConfigurationEditor() {
         }
 
         const response = await fetch(`/api/load-config?org_key=${org_key}&module_key=${module_key}`, {
-          headers: {
-            'Accept': 'application/json'
-          }
         });
         
         if (!response.ok) {
