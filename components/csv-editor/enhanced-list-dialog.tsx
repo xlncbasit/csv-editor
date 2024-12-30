@@ -71,7 +71,7 @@ export function EnhancedListValueDialog({
       const module_key = searchParams.get('module_key');
       
       const response = await fetch(
-        `/api/codesets?org_key=${org_key}&module_key=${module_key}`
+        `/edit/api/codesets?org_key=${org_key}&module_key=${module_key}`
       );
       const data = await response.json();
       
@@ -95,7 +95,7 @@ export function EnhancedListValueDialog({
       const module_key = searchParams.get('module_key');
       
       const response = await fetch(
-        `/api/codesets?org_key=${org_key}&module_key=${module_key}`,
+        `/edit/api/codesets?org_key=${org_key}&module_key=${module_key}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

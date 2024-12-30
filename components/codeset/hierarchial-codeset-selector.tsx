@@ -3,6 +3,7 @@ import { Table } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSearchParams } from 'next/navigation';
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ export default function HierarchicalCodesetSelector({ onSelect, selectedValue }:
   const [filteredData, setFilteredData] = useState<CodesetNode[]>([]);
   const [selectedPath, setSelectedPath] = useState<string>('');
   const { toast } = useToast();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     loadCodesets();
@@ -45,7 +47,22 @@ export default function HierarchicalCodesetSelector({ onSelect, selectedValue }:
 
   const loadCodesets = async () => {
     try {
-      const response = await fetch('/api/codesets');
+      const org_key = searchParams.get('org_key');
+      const module_key = searchParams.get('module_key');
+      const response = await fetch(
+        `/edit/api/codesets?org_key=${org_key}&module_key=${module_key}`,
+        {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'Cache-Control': 'no-cache'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       
       if (data.success) {
