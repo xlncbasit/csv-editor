@@ -6,14 +6,12 @@ import Papa from 'papaparse';
 const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
 
 interface Codeset {
-  codeset: string;
-  type: string;
-  application: string;
-  name: string;
-  code: string;
-  parentPath: string;
-  ACT_00000150?: string;
-  ACT_00000141?: string;
+  field: string;
+  Type: string;
+  Level: string;
+  'Parent Path': string;
+  Code: string;
+  Description: string;
 }
 
 const getFilePath = (org_key: string | null, module_key: string | null) => {
@@ -41,18 +39,35 @@ const readAndParseCSV = async (filePath: string) => {
   console.log('Reading and parsing CSV from:', filePath);
   const fileContent = await fs.readFile(filePath, 'utf-8');
   console.log('File content length:', fileContent.length);
-  console.log('First 100 characters:', fileContent.slice(0, 100));
+  console.log('First 100 characters:', fileContent);
 
   const lines = fileContent.split('\n');
-  const dataContent = lines.slice(3).join('\n');
+  const headerRow = lines[1];
+  const dataContent = lines.slice(2).join('\n');
   console.log('Processing from row 4, starting with:', dataContent.slice(0, 100));
 
 
-  const parseResult = Papa.parse(fileContent, {
+  const parseResult = Papa.parse<Codeset>(dataContent, {
     header: true,
     skipEmptyLines: true,
-    transform: (value) => value?.trim() || ''
+    transform: (value) => value?.trim() || '',
+    transformHeader: (header) => {
+      // Map header names to match the actual CSV structure
+      const headerMap: { [key: string]: string } = {
+        'field': 'field',
+        'Type': 'Type',
+        'Level': 'Level',
+        'Parent Path': 'Parent Path',
+        'Code': 'Code',
+        'Description': 'Description'
+      };
+      return headerMap[header] || header;
+    }
   });
+
+  
+
+  console.log('parsed codeset:', parseResult )
 
   console.log('Parse result:', {
     rowCount: parseResult.data.length,
@@ -94,18 +109,15 @@ export async function GET(request: Request) {
     const parseResult = await readAndParseCSV(filePath);
     console.log('Successfully parsed CSV with rows:', parseResult.data.length);
 
-    const codesets = parseResult.data.map((row: any) => {
-      const codeset = {
-        codeset: row.codeset?.trim(),
-        type: row.Type?.trim(),
-        application: row.application?.trim(),
-        name: row.Name?.trim(),
-        code: row.ACT_00000150?.trim() || row.ACT_00000141?.trim() || '',
-        parentPath: row.parentPath?.trim() || ''
-      };
-      console.log('Processed codeset:', codeset.name);
-      return codeset;
-    }).filter(item => item.codeset && item.type);
+    const codesets = parseResult.data.map(row => ({
+      codeset: row.field,
+      type: row.Type,
+      level: row.Level,
+      parentPath: row['Parent Path'],
+      code: row.Code,
+      description: row.Description,
+      name: row.field // Using field as name for display purposes
+    })).filter(item => item.codeset && item.type);
 
     console.log('Total processed codesets:', codesets.length);
 
@@ -183,9 +195,9 @@ export async function PUT(request: Request) {
     const { searchParams } = new URL(request.url);
     const org_key = searchParams.get('org_key');
     const module_key = searchParams.get('module_key');
-    const { nodeId, code } = await request.json();
+    const { nodeId, description } = await request.json();
     
-    console.log('PUT parameters:', { org_key, module_key, nodeId, code });
+    console.log('PUT parameters:', { org_key, module_key, nodeId, description });
 
     if (!org_key || !module_key) {
       console.warn('Missing required parameters');
@@ -204,28 +216,33 @@ export async function PUT(request: Request) {
     console.log('Current data rows:', parseResult.data.length);
 
     let updated = false;
-    const updatedData = parseResult.data.map((row: any) => {
-      if (row.codeset === nodeId) {
+    const updatedData = parseResult.data.map(row => {
+      if (row.field === nodeId) {
         updated = true;
-        console.log('Updating codeset:', nodeId);
         return {
           ...row,
-          ACT_00000141: code,
-          ACT_00000150: code
+          Description: description
         };
       }
       return row;
     });
+
 
     if (!updated) {
       console.warn('Codeset not found:', nodeId);
       return NextResponse.json({ success: false, error: 'Codeset not found' }, { status: 404 });
     }
 
+    const headerContent = (await fs.readFile(filePath, 'utf-8'))
+      .split('\n')
+      .slice(0, 3)
+      .join('\n');
+
+
     const updatedCsv = Papa.unparse(updatedData);
     console.log('Generated updated CSV length:', updatedCsv.length);
 
-    await fs.writeFile(filePath, updatedCsv);
+    await fs.writeFile(filePath, `${headerContent}\n${updatedCsv}`);
     console.log('Successfully wrote updated CSV');
 
     return NextResponse.json({ success: true, message: 'Codeset updated successfully' });

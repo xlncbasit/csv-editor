@@ -7,7 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Loader2 } from 'lucide-react';
 import HierarchicalCodesetEditor from '../codeset/hierarchial-codeset-selector';
 
 interface CodesetValue {
@@ -42,6 +42,7 @@ export function EnhancedListValueDialog({
   const [codesets, setCodesets] = useState<CodesetValue[]>([]);
   const [selectedCodeset, setSelectedCodeset] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null); 
   const [newCodeset, setNewCodeset] = useState({
     codeset: '',
     type: '',
@@ -49,13 +50,13 @@ export function EnhancedListValueDialog({
     name: ''
   });
   const handleCodesetSelect = (value: string) => {
+    console.log('Selected value:', value); // Debug log
     setSelectedCodeset(value);
-    // Update the UI to show the selected codeset
     toast({
-      title: "Codeset Selected",
-      description: `Selected codeset: ${value}`,
+      title: "Codeset Selected"
     });
   };
+  
 
 
   useEffect(() => {
@@ -128,96 +129,99 @@ export function EnhancedListValueDialog({
   if (listType === 'Codeset') {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-xl bg-white">
+        <DialogContent className="sm:max-w-xl bg-white max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Codeset Management</DialogTitle>
           </DialogHeader>
           
-          <Tabs defaultValue="select" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="select">Select Codeset</TabsTrigger>
-              <TabsTrigger value="add">Add New Codeset</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="select">
-              < HierarchicalCodesetEditor
-                  onSelect={handleCodesetSelect}
-                  selectedValue={selectedCodeset}
-               />
-            </TabsContent>
-            
-            <TabsContent value="add">
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+          {error && (
+            <div className="p-4 text-red-500">
+              <p>{error}</p>
+              <Button onClick={() => setError(null)} variant="outline" className="mt-2">
+                Dismiss
+              </Button>
+            </div>
+          )}
+          
+          {loading ? (
+            <div className="flex justify-center p-8">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            </div>
+          ) : (
+            <Tabs defaultValue="select" className="w-full flex-1 overflow-hidden flex flex-col">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="select">Select Codeset</TabsTrigger>
+                <TabsTrigger value="add">Add New Codeset</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="select" className="flex-1 overflow-hidden">
+                <div className="h-full overflow-auto">
+                  <HierarchicalCodesetEditor
+                    onSelect={handleCodesetSelect}
+                    selectedValue={selectedCodeset}
+                    key={selectedCodeset}
+                  />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="add">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">Codeset ID</label>
+                      <Input
+                        value={newCodeset.codeset}
+                        onChange={e => setNewCodeset({...newCodeset, codeset: e.target.value})}
+                        placeholder="Enter codeset ID"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Type</label>
+                      <Input
+                        value={newCodeset.type}
+                        onChange={e => setNewCodeset({...newCodeset, type: e.target.value})}
+                        placeholder="Enter type"
+                      />
+                    </div>
+                  </div>
                   <div>
-                    <label className="text-sm font-medium">Codeset ID</label>
+                    <label className="text-sm font-medium">Application</label>
                     <Input
-                      value={newCodeset.codeset}
-                      onChange={e => setNewCodeset({
-                        ...newCodeset,
-                        codeset: e.target.value
-                      })}
-                      placeholder="Enter codeset ID"
+                      value={newCodeset.application}
+                      onChange={e => setNewCodeset({...newCodeset, application: e.target.value})}
+                      placeholder="Enter application"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Type</label>
+                    <label className="text-sm font-medium">Name</label>
                     <Input
-                      value={newCodeset.type}
-                      onChange={e => setNewCodeset({
-                        ...newCodeset,
-                        type: e.target.value
-                      })}
-                      placeholder="Enter type"
+                      value={newCodeset.name}
+                      onChange={e => setNewCodeset({...newCodeset, name: e.target.value})}
+                      placeholder="Enter name"
                     />
                   </div>
+                  <Button
+                    onClick={handleAddCodeset}
+                    className="w-full"
+                    disabled={!newCodeset.codeset || !newCodeset.name || loading}
+                  >
+                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Add New Codeset
+                  </Button>
                 </div>
-                <div>
-                  <label className="text-sm font-medium">Application</label>
-                  <Input
-                    value={newCodeset.application}
-                    onChange={e => setNewCodeset({
-                      ...newCodeset,
-                      application: e.target.value
-                    })}
-                    placeholder="Enter application"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Name</label>
-                  <Input
-                    value={newCodeset.name}
-                    onChange={e => setNewCodeset({
-                      ...newCodeset,
-                      name: e.target.value
-                    })}
-                    placeholder="Enter name"
-                  />
-                </div>
-                <Button
-                  onClick={handleAddCodeset}
-                  className="w-full"
-                  disabled={!newCodeset.codeset || !newCodeset.name}
-                >
-                  Add New Codeset
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-
+              </TabsContent>
+            </Tabs>
+          )}
+ 
           <DialogFooter>
             <Button 
               onClick={() => {
                 if (selectedCodeset) {
-                  const values = codesets
-                    .filter(c => c.codeset === selectedCodeset)
-                    .map(c => c.name)
-                    .join('#');
-                  onSave(values);
+                  onSave(selectedCodeset);
                 }
                 onOpenChange(false);
               }}
-              disabled={!selectedCodeset}
+              disabled={!selectedCodeset || loading}
             >
               Use Selected Codeset
             </Button>

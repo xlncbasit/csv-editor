@@ -1,8 +1,10 @@
 codeset,Type,application,Name,ACT_00000141,
 ,,,,,
 field,Type,Level,Parent Path,Code,Description
+field,Type,Level,Parent Path,Code,Description
+field,Type,Level,Parent Path,Code,Description
 1,INDUSTRY,Level_001,INDUSTRY,ENERGY,Energy
-2,INDUSTRY,Level_001,INDUSTRY,MATERIALS,Materials
+2,INDUSTRY,Level_001,INDUSTRY,asssss,Materials
 3,INDUSTRY,Level_001,INDUSTRY,CAPITAL_GOODS,Capital Goods
 4,INDUSTRY,Level_001,INDUSTRY,SERVICES,Commercial and Professional Services
 5,INDUSTRY,Level_001,INDUSTRY,TRANSPORTATION,Transportation
@@ -10,7 +12,7 @@ field,Type,Level,Parent Path,Code,Description
 7,INDUSTRY,Level_001,INDUSTRY,FMCG,Consumer Goods
 8,INDUSTRY,Level_001,INDUSTRY,RETAIL,Distribution and Retail
 9,INDUSTRY,Level_001,INDUSTRY,PHARMA,Health Care and Pharmaceuticals
-10,INDUSTRY,Level_001,INDUSTRY,ELECTRONICS,Industrial Electronics
+10,INDUSTRY,Level_001,INDUSTRY,ELECTRONICS,
 11,INDUSTRY,Level_001,INDUSTRY,MEDIA,Media and Entertainment
 12,INDUSTRY,Level_001,INDUSTRY,REALESTATE,Real Estate Management and Development
 13,INDUSTRY,Level_001,INDUSTRY,RENTAL,Rental
@@ -56,7 +58,7 @@ field,Type,Level,Parent Path,Code,Description
 53,INDUSTRY,Level_002,INDUSTRY#TRANSPORTATION,PASSENGER,Passenger Ground Transportation
 54,INDUSTRY,Level_002,INDUSTRY#TRANSPORTATION,HIGHWAYS,Highways
 55,INDUSTRY,Level_002,INDUSTRY#TRANSPORTATION,PORTS_SERVICES,Marine Ports and Services
-56,INDUSTRY,Level_002,INDUSTRY#AUTOMOBILE,AUTOMOTIVE_PARTS,"Automotive Parts and Equipment, Tires and Rubber"
+56,INDUSTRY,Level_002,INDUSTRY#AUTOMOBILE,AUTOMOTIVE_PARTS,"Automotive Parts, and Rubber"
 57,INDUSTRY,Level_002,INDUSTRY#AUTOMOBILE,CARS,Automobiles
 58,INDUSTRY,Level_002,INDUSTRY#FMCG,CONSUMER_ELECTRONICS,Consumer Electronics
 59,INDUSTRY,Level_002,INDUSTRY#FMCG,HOME_FURNISHINGS,Home Furnishings
@@ -104,6 +106,6 @@ field,Type,Level,Parent Path,Code,Description
 101,CHARGECODE,Level_001,CHARGECODE,MARKETING,Marketing and Advertising
 102,CHARGECODE,Level_001,CHARGECODE,BAD_DEBTS,Bad Debts
 103,CHARGECODE,Level_001,CHARGECODE,COGS,COGS
-104,CHARGECODE,Level_002,CHARGECODE#BAD_DEBTS,NON_PAYMENT,Non payment from customers
+104,CHARGECODE,Level_002,CHARGECODE#BAD_DEBTS,NON_PAYMENT,"Non payment from "
 105,CHARGECODE,Level_002,CHARGECODE#BAD_DEBTS,FRAUDULENT_ACTIVITIES,Fraudulent activities
 106,CHARGECODE,Level_002,CHARGECODE,,
