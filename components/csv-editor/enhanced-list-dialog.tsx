@@ -13,8 +13,12 @@ import HierarchicalCodesetEditor from '../codeset/hierarchial-codeset-selector';
 interface CodesetValue {
   codeset: string;
   type: string;
-  application: string;
+  level: string;
+  parentPath: string;
+  code: string;
+  description: string;
   name: string;
+  listValues?: string[];
 }
 
 interface ListValueDialogProps {
@@ -217,7 +221,10 @@ export function EnhancedListValueDialog({
             <Button 
               onClick={() => {
                 if (selectedCodeset) {
-                  onSave(selectedCodeset);
+                  const selected = codesets.find(c => c.codeset === selectedCodeset);
+                  if (selected) {
+                    onSave(selected.parentPath);
+                  }
                 }
                 onOpenChange(false);
               }}

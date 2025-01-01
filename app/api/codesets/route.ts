@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import Papa from 'papaparse';
 
-const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
+const USER_DATA_PATH = 'data/users';
 
 interface Codeset {
   field: string;
@@ -235,7 +235,7 @@ export async function PUT(request: Request) {
 
     const headerContent = (await fs.readFile(filePath, 'utf-8'))
       .split('\n')
-      .slice(0, 3)
+      .slice(0, 2)
       .join('\n');
 
 

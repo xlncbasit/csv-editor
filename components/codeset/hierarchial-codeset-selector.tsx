@@ -150,6 +150,8 @@ export default function HierarchicalCodesetSelector({
     const selected = uniqueCodesets.find(item => item.codeset === value);
     
     if (selected) {
+
+      onSelect(selected.parentPath);
       // Filter all items that share the same parent path
       const relatedItems = codesetData.filter(
         item => (item.parentPath || 'Root') === selected.parentPath
