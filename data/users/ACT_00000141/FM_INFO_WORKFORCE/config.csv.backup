@@ -8,7 +8,7 @@ fieldCode002,TYP,WORKFORCE_TYPE,Contract Type,SUPERVISOR,,,mandatory,Fixed,Full-
 fieldCode003,NAM,FIRST_NAME,First Name,SUPERVISOR,,,mandatory,,,,,,,,03,,,05,03,03,,05,,04,05,,,,,,,,,
 fieldCode004,NAM,LAST_NAME,Last Name,SUPERVISOR,,,mandatory,,,,,,,,04,,,06,04,04,,06,,05,06,,,,,,,,,
 fieldCode005,IMG,IMAGE,Employee Photo,SUPERVISOR,,,,,,,,,,,,,,03,05,05,,03,,01,03,,,,,,,,,
-fieldCode006,CAT,ATTENDANCE,Attendance,SUPERVISOR,Select Yes if Workforce needs to use Mobile based Remote Attendance,Mobile,mandatory,Codeset,No#Yes,,,,,,06,,,07,06,06,,07,,06,07,,,,,,,,,
+fieldCode006,CAT,ATTENDANCE,Attendance,SUPERVISOR,Select Yes if Workforce needs to use Mobile based Remote Attendance,Mobile,mandatory,Fixed,No#Yes,,,,,,06,,,07,06,06,,07,,06,07,,,,,,,,,
 fieldCode007,NAM,DESIGNATION,Designation,SUPERVISOR,,,,,,,,,,,07,,,08,07,07,,08,,07,08,,,,,,,,,
 fieldCode008,GEN,UID_KEY,UID Number,SUPERVISOR,Enter external Unique Identification Number as used by the Organization,,,,,,,,,,08,,,09,08,08,,09,,08,09,,,,,,,,,
 fieldCode009,TEL,MOBILE_KEY,Phone Number,SUPERVISOR,Enter full number with +(Country Code) (Phone Number) Format. Mobile Access will be provided to this  number.,,mandatory#duplicate,,,,,,,,09,,,10,09,09,,10,,09,10,,,,,,,,,

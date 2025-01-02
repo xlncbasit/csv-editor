@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { AddCodesetDialog } from './add-codeset-dialog';
 
 interface CodesetNode {
   codeset: string;
@@ -37,6 +38,7 @@ export default function HierarchicalCodesetSelector({
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [editMode, setEditMode] = useState(false);
+  const [codesetDialogOpen, setCodesetDialogOpen] = useState(false);
   const { toast } = useToast();
   const searchParams = useSearchParams();
 

@@ -48,10 +48,12 @@ export function EnhancedListValueDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null); 
   const [newCodeset, setNewCodeset] = useState({
-    codeset: '',
+    name: '',
     type: '',
-    application: '',
-    name: ''
+    level:'',
+    parentPath: '',
+    code: '',
+    description: ''
   });
   const handleCodesetSelect = (value: string) => {
     console.log('Selected value:', value); // Debug log
@@ -115,10 +117,12 @@ export function EnhancedListValueDialog({
         });
         loadCodesets();
         setNewCodeset({
-          codeset: '',
+          name: '',
           type: '',
-          application: '',
-          name: ''
+          level:'',
+          parentPath: '',
+          code: '',
+          description: ''
         });
       }
     } catch (error) {
@@ -171,43 +175,60 @@ export function EnhancedListValueDialog({
               <TabsContent value="add">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Codeset ID</label>
+                  <div>
+                      <label className="text-sm font-medium">Codeset Field</label>
                       <Input
-                        value={newCodeset.codeset}
-                        onChange={e => setNewCodeset({...newCodeset, codeset: e.target.value})}
+                        value={newCodeset.name}
+                        onChange={e => setNewCodeset({...newCodeset, name: e.target.value})}
+                        placeholder="Enter codeset Field Number"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Codeset Type</label>
+                      <Input
+                        value={newCodeset.type}
+                        onChange={e => setNewCodeset({...newCodeset, type: e.target.value})}
                         placeholder="Enter codeset ID"
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium">Type</label>
+                      <label className="text-sm font-medium">Level</label>
                       <Input
-                        value={newCodeset.type}
-                        onChange={e => setNewCodeset({...newCodeset, type: e.target.value})}
+                        value={newCodeset.level}
+                        onChange={e => setNewCodeset({...newCodeset, level: e.target.value})}
+                        placeholder="Enter type"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Parent Path</label>
+                      <Input
+                        value={newCodeset.parentPath}
+                        onChange={e => setNewCodeset({...newCodeset, parentPath: e.target.value})}
                         placeholder="Enter type"
                       />
                     </div>
                   </div>
+                  
                   <div>
-                    <label className="text-sm font-medium">Application</label>
+                    <label className="text-sm font-medium">Code</label>
                     <Input
-                      value={newCodeset.application}
-                      onChange={e => setNewCodeset({...newCodeset, application: e.target.value})}
+                      value={newCodeset.code}
+                      onChange={e => setNewCodeset({...newCodeset, code: e.target.value})}
                       placeholder="Enter application"
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium">Name</label>
+                    <label className="text-sm font-medium">Description</label>
                     <Input
-                      value={newCodeset.name}
-                      onChange={e => setNewCodeset({...newCodeset, name: e.target.value})}
+                      value={newCodeset.description}
+                      onChange={e => setNewCodeset({...newCodeset, description: e.target.value})}
                       placeholder="Enter name"
                     />
                   </div>
                   <Button
                     onClick={handleAddCodeset}
                     className="w-full"
-                    disabled={!newCodeset.codeset || !newCodeset.name || loading}
+                    disabled={!newCodeset.type || !newCodeset.code || loading}
                   >
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Add New Codeset
@@ -223,7 +244,7 @@ export function EnhancedListValueDialog({
                 if (selectedCodeset) {
                   const selected = codesets.find(c => c.codeset === selectedCodeset);
                   if (selected) {
-                    onSave(selected.parentPath);
+                    onSave(selected.parentPath || 'Root');
                   }
                 }
                 onOpenChange(false);

@@ -2,6 +2,7 @@
 
 import { Plus, Upload, Download, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useSearchParams } from 'next/navigation';
 import {
   Tooltip,
   TooltipContent,
@@ -11,6 +12,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { AddRowDialog } from './add-row-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { downloadCSV } from '@/lib/csv-download';
 
 interface CsvHeaderProps {
   onAddColumn: () => void;
@@ -18,6 +20,7 @@ interface CsvHeaderProps {
   onDownload: () => void;
   onUpload: (file: File) => void;
   hiddenFields: {[key: string]: boolean};
+  onSave: () => void;
   onToggleVisibility: (field: string) => void;
 }
 
@@ -26,11 +29,46 @@ export function CsvHeader({
   onAddRow, 
   onDownload, 
   onUpload,
+  onSave,
   hiddenFields,
   onToggleVisibility 
 }: CsvHeaderProps) {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
 
+  
+  
+  
+  const handleDownload = async () => {
+    const org_key = searchParams.get('org_key');
+    const module_key = searchParams.get('module_key');
+    
+    if (!org_key || !module_key) {
+      toast({
+        title: "Error",
+        description: "Missing required parameters",
+        variant: "destructive"
+      });
+      return;
+    }
+  
+    const success = await downloadCSV(org_key, module_key, 'config');
+    
+    if (success) {
+      toast({
+        title: "Success",
+        description: "CSV file downloaded successfully"
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Failed to download CSV file",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -136,7 +174,7 @@ export function CsvHeader({
         {/* Right side controls */}
         <div className="flex items-center gap-2">
           <TooltipProvider delayDuration={300}>
-            <Tooltip>
+            {/* <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
                   onClick={onDownload} 
@@ -151,9 +189,25 @@ export function CsvHeader({
               <TooltipContent>
                 <p>Download as CSV file</p>
               </TooltipContent>
-            </Tooltip>
+            </Tooltip> */}
 
             <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  onClick={onSave}
+                  variant="outline" 
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                >
+                  Save Changes
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Save configuration changes</p>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* <Tooltip>
               <TooltipTrigger asChild>
                 <div className="relative">
                   <input
@@ -176,7 +230,7 @@ export function CsvHeader({
               <TooltipContent>
                 <p>Upload a CSV file</p>
               </TooltipContent>
-            </Tooltip>
+            </Tooltip> */}
           </TooltipProvider>
         </div>
       </div>

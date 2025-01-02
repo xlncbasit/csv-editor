@@ -1,7 +1,7 @@
 codeset,Type,application,Name,ACT_00000141,
-,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
 field,Type,Level,Parent Path,Code,Description
-1,INDUSTRY,Level_001,INDUSTRY,ENERGY,Energymineral
+1,INDUSTRY,Level_001,INDUSTRY,ENERGY,Energymineralaluminium
 2,INDUSTRY,Level_001,INDUSTRY,asssss,Materials
 3,INDUSTRY,Level_001,INDUSTRY,CAPITAL_GOODS,Capital Goods
 4,INDUSTRY,Level_001,INDUSTRY,SERVICES,Commercial and Professional Services
@@ -107,3 +107,6 @@ field,Type,Level,Parent Path,Code,Description
 104,CHARGECODE,Level_002,CHARGECODE#BAD_DEBTS,NON_PAYMENT,Non payment from customer
 105,CHARGECODE,Level_002,CHARGECODE#BAD_DEBTS,FRAUDULENT_ACTIVITIES,Fraudulent activities
 106,CHARGECODE,Level_002,CHARGECODE,,
+107,werwer,werewr,werwer,werwer,werwerwe
+108,werwefwfwf,cdwsdsfs,CODESET109,sfvsfv,sfvsfvfsv
+109,CODESETTYPE109,LEVEL_001,CODESET109,CODESET109,codeset109

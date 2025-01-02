@@ -3,7 +3,16 @@ import path from 'path';
 import fs from 'fs/promises';
 import Papa from 'papaparse';
 
-const USER_DATA_PATH = 'data/users';
+const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
+
+const COLUMN_MAP = {
+  Type: 2,
+  Level: 3,
+  'Parent Path': 4,
+  Code: 5,
+  Description: 6
+} as const;
+
 
 interface Codeset {
   field: string;
@@ -13,6 +22,57 @@ interface Codeset {
   Code: string;
   Description: string;
 }
+
+
+async function appendToCSV(filePath: string, newCodeset: Partial<Codeset>) {
+  try {
+    // Read existing file content
+    const fileContent = await fs.readFile(filePath, 'utf-8');
+    const lines = fileContent.split('\n');
+    
+    // Preserve header rows (first 3 lines)
+    const headerRows = lines.slice(0, 2);
+    const dataContent = lines.slice(2);
+
+    // Parse existing data
+    const parseResult = Papa.parse<Codeset>(dataContent.join('\n'), {
+      header: true,
+      skipEmptyLines: true,
+      transform: (value) => value?.trim() || ''
+    });
+
+    // Check for duplicates
+    const isDuplicate = parseResult.data.some(
+      row => row.field === newCodeset.field || 
+             row.Code === newCodeset.Code
+    );
+
+    if (isDuplicate) {
+      throw new Error('Duplicate codeset or code found');
+    }
+
+    // Format new row according to existing structure
+    const newRow = Papa.unparse([newCodeset], {
+      header: false
+    });
+
+    // Combine headers, existing data, and new row
+    const updatedContent = [
+      ...headerRows,
+      ...dataContent,
+      newRow
+    ].join('\n');
+
+    // Write back to file
+    await fs.writeFile(filePath, updatedContent);
+
+    return true;
+  } catch (error) {
+    console.error('Error appending to CSV:', error);
+    throw error;
+  }
+}
+
 
 const getFilePath = (org_key: string | null, module_key: string | null) => {
   console.log('Getting file path for:', { org_key, module_key });
@@ -49,7 +109,7 @@ const readAndParseCSV = async (filePath: string) => {
 
   const parseResult = Papa.parse<Codeset>(dataContent, {
     header: true,
-    skipEmptyLines: true,
+    skipEmptyLines: 'greedy',
     transform: (value) => value?.trim() || '',
     transformHeader: (header) => {
       // Map header names to match the actual CSV structure
@@ -163,7 +223,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'File not found' }, { status: 404 });
     }
 
-    const parseResult = await readAndParseCSV(filePath);
+    /* const parseResult = await readAndParseCSV(filePath);
     console.log('Existing codesets:', parseResult.data.length);
 
     if (parseResult.data.some((row: any) => row.codeset === newCodeset.codeset)) {
@@ -186,7 +246,27 @@ export async function POST(request: Request) {
       success: false, 
       error: error instanceof Error ? error.message : 'Failed to add codeset' 
     }, { status: 500 });
+  } */
+
+    await appendToCSV(filePath, newCodeset);
+
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Codeset added successfully' 
+    });
+
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to add codeset';
+    const status = message.includes('Duplicate') ? 409 : 500;
+    
+    return NextResponse.json({ 
+      success: false, 
+      error: message 
+    }, { status });
   }
+
+
+
 }
 
 export async function PUT(request: Request) {

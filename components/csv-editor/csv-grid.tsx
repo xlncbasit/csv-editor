@@ -137,6 +137,48 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
     setTransposedData(mappedTransposed);
   }, [positionMapper]);
 
+  const saveConfig = async (csvData: CsvRow[]) => {
+    const org_key = searchParams.get('org_key');
+    const module_key = searchParams.get('module_key');
+  
+    try {
+
+      const csvContent = {
+        headerRows: headerRows,
+        rows: csvData,
+        headers: originalHeaders
+      };
+      const response = await fetch(
+        `/edit/api/save-config?org_key=${org_key}&module_key=${module_key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csvContent })
+        }
+      );
+  
+      if (!response.ok) {
+        throw new Error('Failed to save configuration');
+      }
+      
+  
+      toast({
+        title: "Success",
+        description: "Configuration saved successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to save configuration",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  
+  const handleSave = () => {
+    return saveConfig(originalRows);
+  };
   const handleCellUpdate = useCallback((
     transposedRow: number,
     transposedCol: number,
@@ -336,6 +378,7 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
         onAddRow={handleAddRow}
         onDownload={handleDownload}
         onUpload={handleUpload}
+        onSave={handleSave}
         hiddenFields={hiddenFields}
         onToggleVisibility={toggleFieldVisibility}
       />
