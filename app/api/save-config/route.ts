@@ -56,13 +56,15 @@ export async function POST(request: Request) {
     const csvString = `${headerContent}\n${dataContent}`;
 
     // Save config file with backup
-    const configBackupPath = path.join(CONFIG_PATH, `${org_key}_${module_key}_${timestamp}.csv`);
+    const configBackupPath = path.join(CONFIG_PATH, `config.csv`);
+    console.log('Saving configuration to:', configBackupPath);
     await fs.writeFile(configBackupPath, csvString, 'utf-8');
+    console.log('Configuration file saved successfully');
 
     // Save codeset file if exists
     const codesetRows = csvContent.rows.filter(row => row.data[1] === 'CAT');
     if (codesetRows.length > 0) {
-      const codesetBackupPath = path.join(CODESET_PATH, `${org_key}_${module_key}_codeset_${timestamp}.csv`);
+      const codesetBackupPath = path.join(CODESET_PATH, `codesetvalues.csv`);
       const codesetContent = codesetRows
         .map(row => row.data.join(','))
         .join('\n');
