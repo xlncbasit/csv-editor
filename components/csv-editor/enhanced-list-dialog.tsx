@@ -12,14 +12,15 @@ import HierarchicalCodesetEditor from '../codeset/hierarchial-codeset-selector';
 
 interface CodesetValue {
   codeset: string;
-  type: string;
-  level: string;
+  Type: string;
+  Level: string;
   parentPath: string;
-  code: string;
-  description: string;
-  name: string;
+  Code: string;
+  Description: string;
+  field: string;
   listValues?: string[];
 }
+
 
 interface ListValueDialogProps {
   open: boolean;
@@ -48,12 +49,12 @@ export function EnhancedListValueDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null); 
   const [newCodeset, setNewCodeset] = useState({
-    name: '',
-    type: '',
-    level:'',
+    field: '',
+    Type: '',
+    Level:'',
     parentPath: '',
-    code: '',
-    description: ''
+    Code: '',
+    Description: ''
   });
   const handleCodesetSelect = (value: string) => {
     console.log('Selected value:', value); // Debug log
@@ -117,12 +118,12 @@ export function EnhancedListValueDialog({
         });
         loadCodesets();
         setNewCodeset({
-          name: '',
-          type: '',
-          level:'',
+          field: '',
+          Type: '',
+          Level:'',
           parentPath: '',
-          code: '',
-          description: ''
+          Code: '',
+          Description: ''
         });
       }
     } catch (error) {
@@ -178,25 +179,25 @@ export function EnhancedListValueDialog({
                   <div>
                       <label className="text-sm font-medium">Codeset Field</label>
                       <Input
-                        value={newCodeset.name}
-                        onChange={e => setNewCodeset({...newCodeset, name: e.target.value})}
+                        value={newCodeset.field}
+                        onChange={e => setNewCodeset({...newCodeset, field: e.target.value})}
                         placeholder="Enter codeset Field Number"
                       />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Codeset Type</label>
                       <Input
-                        value={newCodeset.type}
-                        onChange={e => setNewCodeset({...newCodeset, type: e.target.value})}
-                        placeholder="Enter codeset ID"
+                        value={newCodeset.Type}
+                        onChange={e => setNewCodeset({...newCodeset, Type: e.target.value})}
+                        placeholder="Enter codeset type"
                       />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Level</label>
                       <Input
-                        value={newCodeset.level}
-                        onChange={e => setNewCodeset({...newCodeset, level: e.target.value})}
-                        placeholder="Enter type"
+                        value={newCodeset.Level}
+                        onChange={e => setNewCodeset({...newCodeset, Level: e.target.value})}
+                        placeholder="Enter level"
                       />
                     </div>
                     <div>
@@ -204,7 +205,7 @@ export function EnhancedListValueDialog({
                       <Input
                         value={newCodeset.parentPath}
                         onChange={e => setNewCodeset({...newCodeset, parentPath: e.target.value})}
-                        placeholder="Enter type"
+                        placeholder="Enter parent path"
                       />
                     </div>
                   </div>
@@ -212,23 +213,23 @@ export function EnhancedListValueDialog({
                   <div>
                     <label className="text-sm font-medium">Code</label>
                     <Input
-                      value={newCodeset.code}
-                      onChange={e => setNewCodeset({...newCodeset, code: e.target.value})}
-                      placeholder="Enter application"
+                      value={newCodeset.Code}
+                      onChange={e => setNewCodeset({...newCodeset, Code: e.target.value})}
+                      placeholder="Enter code"
                     />
                   </div>
                   <div>
                     <label className="text-sm font-medium">Description</label>
                     <Input
-                      value={newCodeset.description}
-                      onChange={e => setNewCodeset({...newCodeset, description: e.target.value})}
-                      placeholder="Enter name"
+                      value={newCodeset.Description}
+                      onChange={e => setNewCodeset({...newCodeset, Description: e.target.value})}
+                      placeholder="Enter description"
                     />
                   </div>
                   <Button
                     onClick={handleAddCodeset}
                     className="w-full"
-                    disabled={!newCodeset.type || !newCodeset.code || loading}
+                    disabled={!newCodeset.Type || !newCodeset.Code || loading}
                   >
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Add New Codeset

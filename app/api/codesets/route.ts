@@ -3,12 +3,12 @@ import path from 'path';
 import fs from 'fs/promises';
 import Papa from 'papaparse';
 
-const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
+const USER_DATA_PATH = 'data/users';
 
 const COLUMN_MAP = {
   Type: 2,
   Level: 3,
-  'Parent Path': 4,
+  parentPath: 4,
   Code: 5,
   Description: 6
 } as const;
@@ -18,7 +18,7 @@ interface Codeset {
   field: string;
   Type: string;
   Level: string;
-  'Parent Path': string;
+  parentPath: string;
   Code: string;
   Description: string;
 }
@@ -31,8 +31,8 @@ async function appendToCSV(filePath: string, newCodeset: Partial<Codeset>) {
     const lines = fileContent.split('\n');
     
     // Preserve header rows (first 3 lines)
-    const headerRows = lines.slice(0, 2);
-    const dataContent = lines.slice(2);
+    const headerRows = lines.slice(0, 4);
+    const dataContent = lines.slice(4);
 
     // Parse existing data
     const parseResult = Papa.parse<Codeset>(dataContent.join('\n'), {
@@ -42,14 +42,14 @@ async function appendToCSV(filePath: string, newCodeset: Partial<Codeset>) {
     });
 
     // Check for duplicates
-    const isDuplicate = parseResult.data.some(
-      row => row.field === newCodeset.field || 
-             row.Code === newCodeset.Code
+    /* const isDuplicate = parseResult.data.some(
+      row => row.field === newCodeset.field  
+            //  row.Code === newCodeset.Code
     );
 
     if (isDuplicate) {
       throw new Error('Duplicate codeset or code found');
-    }
+    } */
 
     // Format new row according to existing structure
     const newRow = Papa.unparse([newCodeset], {
@@ -102,8 +102,8 @@ const readAndParseCSV = async (filePath: string) => {
   console.log('First 100 characters:', fileContent);
 
   const lines = fileContent.split('\n');
-  const headerRow = lines[1];
-  const dataContent = lines.slice(2).join('\n');
+  const headerRow = lines[2];
+  const dataContent = lines.slice(3).join('\n');
   console.log('Processing from row 4, starting with:', dataContent.slice(0, 100));
 
 
@@ -117,7 +117,7 @@ const readAndParseCSV = async (filePath: string) => {
         'field': 'field',
         'Type': 'Type',
         'Level': 'Level',
-        'Parent Path': 'Parent Path',
+        'Parent Path': 'parentPath',
         'Code': 'Code',
         'Description': 'Description'
       };
@@ -173,7 +173,7 @@ export async function GET(request: Request) {
       codeset: row.field,
       type: row.Type,
       level: row.Level,
-      parentPath: row['Parent Path'],
+      parentPath: row.parentPath,
       code: row.Code,
       description: row.Description,
       name: row.field // Using field as name for display purposes
