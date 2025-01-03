@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import Papa from 'papaparse';
 
-const USER_DATA_PATH = 'data/users';
+const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
 
 const COLUMN_MAP = {
   Type: 2,
