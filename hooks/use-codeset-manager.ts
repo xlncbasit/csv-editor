@@ -5,6 +5,12 @@ export const useCodesetManager = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const reset = () => {
+    setExistingFields([]);
+    setLoading(false);
+    setError(null);
+  };
+
   const fetchExistingCodesets = async (org_key: string | null, module_key: string | null) => {
     try {
       setLoading(true);
@@ -71,6 +77,7 @@ export const useCodesetManager = () => {
     validateFieldNumber: (fieldNumber: string) => !existingFields.includes(fieldNumber),
     loading,
     error,
-    existingFields
+    existingFields,
+    reset
   };
 };
