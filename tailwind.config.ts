@@ -74,7 +74,7 @@ const config: Config = {
         'custom-lg': '100px',
       },
       fontFamily: {
-        'poppins': ['Poppins', 'sans-serif'],
+        'poppins': ['Poppins'],
       },
       keyframes: {
         "accordion-down": {

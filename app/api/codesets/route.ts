@@ -3,16 +3,9 @@ import path from 'path';
 import fs from 'fs/promises';
 import Papa from 'papaparse';
 
-const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
-
-const COLUMN_MAP = {
-  Type: 2,
-  Level: 3,
-  parentPath: 4,
-  Code: 5,
-  Description: 6
-} as const;
-
+const USER_DATA_PATH = 'data/users';
+const CACHE_DURATION = 5 * 60 * 1000;
+const cache = new Map<string, { data: any; timestamp: number }>();
 
 interface Codeset {
   field: string;
@@ -23,180 +16,215 @@ interface Codeset {
   Description: string;
 }
 
+interface ParsedData {
+  data: Codeset[];
+  headers: string[];
+}
 
-async function appendToCSV(filePath: string, newCodeset: Partial<Codeset>) {
-  try {
-    // Read existing file content
-    const fileContent = await fs.readFile(filePath, 'utf-8');
-    const lines = fileContent.split('\n');
+class CSVProcessor {
+  private static sanitizeField(field: string): string {
+    console.log('Sanitizing field:', field);
+    field = field.trim();
+    if (field.includes(',') || field.includes('"') || field.includes('\n')) {
+      return `"${field.replace(/"/g, '""')}"`;
+    }
+    return field;
+  }
+
+  private static async readFile(filePath: string): Promise<string[]> {
+    console.log('Reading file from:', filePath);
+    const content = await fs.readFile(filePath, 'utf-8');
+    const lines = content.split('\n').map(line => line.trim()).filter(Boolean);
+    console.log(`Read ${lines.length} lines from file`);
+    return lines;
+  }
+
+  static async readAndParseCSV(filePath: string): Promise<ParsedData> {
+    console.log('Starting CSV parse operation for:', filePath);
+    try {
+      const lines = await this.readFile(filePath);
+      const headerLines = lines.slice(0, 4);
+      const dataLines = lines.slice(3);
+      console.log('Headers:', headerLines);
+      console.log(`Processing ${dataLines.length} data lines`);
+
+      return new Promise((resolve, reject) => {
+        Papa.parse<Codeset>(dataLines.join('\n'), {
+          header: true,
+          skipEmptyLines: 'greedy',
+          transform: value => value?.trim() || '',
+          transformHeader: header => {
+            console.log('Transforming header:', header);
+            const headerMap: Record<string, string> = {
+              'field': 'field',
+              'Type': 'Type',
+              'Level': 'Level',
+              'Parent Path': 'parentPath',
+              'Code': 'Code',
+              'Description': 'Description'
+            };
+            return headerMap[header] || header;
+          },
+          complete: (results) => {
+            console.log('Parse complete:', {
+              totalRows: results.data.length,
+              errors: results.errors.length,
+              headers: results.meta.fields,
+              firstRow: results.data[0],
+              rawData: dataLines[0]
+            });
+            const validData = results.data.filter(row => 
+              row.field?.trim() && 
+              row.Type?.trim()
+            );
+            console.log(`Found ${validData.length} valid rows`);
+            resolve({ data: validData, headers: headerLines });
+          },
+          error: (error: Error, file?: Papa.LocalFile) => {
+            console.error('Parse error:', error);
+            reject(new Error(`CSV Parse Error: ${error.message}`));
+          }
+        });
+      });
+    } catch (error) {
+      console.error('File read error:', error);
+      throw new Error(`File read error: ${error}`);
+    }
+  }
+
+  static async appendToCSV(filePath: string, newCodeset: Partial<Codeset>): Promise<void> {
+    console.log('Appending new codeset:', newCodeset);
+    const { data, headers } = await this.readAndParseCSV(filePath);
     
-    // Preserve header rows (first 3 lines)
-    const headerRows = lines.slice(0, 4);
-    const dataContent = lines.slice(4);
+    if (data.some(row => row.field === newCodeset.field)) {
+      console.warn('Duplicate field detected:', newCodeset.field);
+      throw new Error('Duplicate field code');
+    }
 
-    // Parse existing data
-    const parseResult = Papa.parse<Codeset>(dataContent.join('\n'), {
-      header: true,
-      skipEmptyLines: true,
-      transform: (value) => value?.trim() || ''
-    });
+    const formattedRow = [
+      newCodeset.field || '',
+      newCodeset.Type || '',
+      newCodeset.Level || 'Level_001',
+      newCodeset.parentPath || '',
+      newCodeset.Code?.toUpperCase() || '',
+      newCodeset.Description || ''
+    ].map(this.sanitizeField).join(',');
 
-    // Check for duplicates
-    /* const isDuplicate = parseResult.data.some(
-      row => row.field === newCodeset.field  
-            //  row.Code === newCodeset.Code
-    );
+    console.log('Formatted new row:', formattedRow);
 
-    if (isDuplicate) {
-      throw new Error('Duplicate codeset or code found');
-    } */
-
-    // Format new row according to existing structure
-    const newRow = Papa.unparse([newCodeset], {
-      header: false
-    });
-
-    // Combine headers, existing data, and new row
     const updatedContent = [
-      ...headerRows,
-      ...dataContent,
-      newRow
+      ...headers,
+      ...data.map(row => 
+        Object.values(row).map(this.sanitizeField).join(',')
+      ),
+      formattedRow
     ].join('\n');
 
-    // Write back to file
     await fs.writeFile(filePath, updatedContent);
+    console.log('Successfully appended new codeset');
+  }
 
-    return true;
-  } catch (error) {
-    console.error('Error appending to CSV:', error);
-    throw error;
+  static async updateCSV(filePath: string, nodeId: string, updates: Partial<Codeset>): Promise<void> {
+    console.log('Updating codeset:', { nodeId, updates });
+    const { data, headers } = await this.readAndParseCSV(filePath);
+    const rowIndex = data.findIndex(row => row.field === nodeId);
+    
+    if (rowIndex === -1) {
+      console.warn('Codeset not found:', nodeId);
+      throw new Error('Codeset not found');
+    }
+    
+    data[rowIndex] = { ...data[rowIndex], ...updates };
+    console.log('Updated row:', data[rowIndex]);
+    
+    const updatedContent = [
+      ...headers,
+      ...data.map(row => 
+        Object.values(row).map(this.sanitizeField).join(',')
+      )
+    ].join('\n');
+
+    await fs.writeFile(filePath, updatedContent);
+    console.log('Successfully updated codeset');
   }
 }
 
+function getCacheKey(org_key: string, module_key: string): string {
+  const key = `${org_key}:${module_key}`;
+  console.log('Generated cache key:', key);
+  return key;
+}
 
-const getFilePath = (org_key: string | null, module_key: string | null) => {
-  console.log('Getting file path for:', { org_key, module_key });
-  if (!org_key || !module_key) {
-    throw new Error('Invalid path: org_key and module_key are required');
-  }
-  const filePath = path.join( USER_DATA_PATH, org_key, module_key, 'codesetvalues.csv');
-  console.log('Constructed file path:', filePath);
-  return filePath;
-};
-
-const fileExists = async (filePath: string) => {
+async function validateAccess(filePath: string): Promise<void> {
+  console.log('Validating file access:', filePath);
   try {
     await fs.access(filePath);
-    console.log('File exists at path:', filePath);
-    return true;
-  } catch (error) {
-    console.error('File access error:', error);
-    return false;
+    console.log('File access validated successfully');
+  } catch {
+    console.error('File not found:', filePath);
+    throw new Error('File not found');
   }
-};
-
-const readAndParseCSV = async (filePath: string) => {
-  console.log('Reading and parsing CSV from:', filePath);
-  const fileContent = await fs.readFile(filePath, 'utf-8');
-  console.log('File content length:', fileContent.length);
-  console.log('First 100 characters:', fileContent);
-
-  const lines = fileContent.split('\n');
-  const headerRow = lines[2];
-  const dataContent = lines.slice(3).join('\n');
-  console.log('Processing from row 4, starting with:', dataContent.slice(0, 100));
-
-
-  const parseResult = Papa.parse<Codeset>(dataContent, {
-    header: true,
-    skipEmptyLines: 'greedy',
-    transform: (value) => value?.trim() || '',
-    transformHeader: (header) => {
-      // Map header names to match the actual CSV structure
-      const headerMap: { [key: string]: string } = {
-        'field': 'field',
-        'Type': 'Type',
-        'Level': 'Level',
-        'Parent Path': 'parentPath',
-        'Code': 'Code',
-        'Description': 'Description'
-      };
-      return headerMap[header] || header;
-    }
-  });
-
-  
-
-  console.log('parsed codeset:', parseResult )
-
-  console.log('Parse result:', {
-    rowCount: parseResult.data.length,
-    errors: parseResult.errors,
-    meta: parseResult.meta
-  });
-
-  if (parseResult.errors.length > 0) {
-    console.error('Parse errors:', parseResult.errors);
-    throw new Error('CSV parsing failed');
-  }
-
-  return parseResult;
-};
+}
 
 export async function GET(request: Request) {
   console.log('GET request received:', request.url);
-  console.log('Request headers:', Object.fromEntries(request.headers));
-  
   try {
     const { searchParams } = new URL(request.url);
     const org_key = searchParams.get('org_key');
     const module_key = searchParams.get('module_key');
-    
+
     console.log('Request parameters:', { org_key, module_key });
 
     if (!org_key || !module_key) {
       console.warn('Missing required parameters');
-      return NextResponse.json({ success: false, error: 'Missing org_key or module_key' }, { status: 400 });
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Missing parameters' 
+      }, { status: 400 });
     }
 
-    const filePath = getFilePath(org_key, module_key);
-
-    if (!(await fileExists(filePath))) {
-      console.warn('File not found:', filePath);
-      return NextResponse.json({ success: false, error: 'File not found' }, { status: 404 });
+    const cacheKey = getCacheKey(org_key, module_key);
+    const cached = cache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      console.log('Returning cached data');
+      return NextResponse.json(cached.data);
     }
 
-    const parseResult = await readAndParseCSV(filePath);
-    console.log('Successfully parsed CSV with rows:', parseResult.data.length);
+    const filePath = path.join(USER_DATA_PATH, org_key, module_key, 'codesetvalues.csv');
+    await validateAccess(filePath);
 
-    const codesets = parseResult.data.map(row => ({
-      codeset: row.field,
-      type: row.Type,
-      level: row.Level,
-      parentPath: row.parentPath,
-      code: row.Code,
-      description: row.Description,
-      name: row.field // Using field as name for display purposes
-    })).filter(item => item.codeset && item.type);
+    const { data } = await CSVProcessor.readAndParseCSV(filePath);
+    console.log(`Processed ${data.length} codesets`);
 
-    console.log('Total processed codesets:', codesets.length);
-
-    return NextResponse.json({
+    const response = {
       success: true,
-      codesets,
+      codesets: data.map(row => ({
+        codeset: row.field,
+        type: row.Type,
+        level: row.Level || 'Level_001',
+        parentPath: row.parentPath,
+        code: row.Code,
+        description: row.Description,
+        name: row.field
+      })),
       meta: {
-        total: codesets.length,
-        types: Array.from(new Set(codesets.map(c => c.type))),
+        total: data.length,
+        types: Array.from(new Set(data.map(r => r.Type))),
         lastUpdated: new Date().toISOString()
       }
-    });
+    };
+
+    cache.set(cacheKey, { data: response, timestamp: Date.now() });
+    console.log('Response cached and returning');
+    return NextResponse.json(response);
 
   } catch (error) {
-    console.error('GET handler error:', error);
+    console.error('GET Error:', error);
+    const status = error instanceof Error && error.message.includes('not found') ? 404 : 500;
     return NextResponse.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Failed to load codesets' 
-    }, { status: 500 });
+      error: error instanceof Error ? error.message : 'Server error' 
+    }, { status });
   }
 }
 
@@ -207,66 +235,36 @@ export async function POST(request: Request) {
     const org_key = searchParams.get('org_key');
     const module_key = searchParams.get('module_key');
     const { newCodeset } = await request.json();
-    
-    console.log('POST parameters:', { org_key, module_key, newCodeset });
+
+    console.log('Request parameters:', { org_key, module_key, newCodeset });
 
     if (!org_key || !module_key) {
       console.warn('Missing required parameters');
-      return NextResponse.json({ success: false, error: 'Missing org_key or module_key' }, { status: 400 });
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Missing parameters' 
+      }, { status: 400 });
     }
 
-    const filePath = getFilePath(org_key, module_key);
-    console.log('Attempting to write to:', filePath);
-
-    if (!(await fileExists(filePath))) {
-      console.warn('Target file not found:', filePath);
-      return NextResponse.json({ success: false, error: 'File not found' }, { status: 404 });
-    }
-
-    /* const parseResult = await readAndParseCSV(filePath);
-    console.log('Existing codesets:', parseResult.data.length);
-
-    if (parseResult.data.some((row: any) => row.codeset === newCodeset.codeset)) {
-      console.warn('Codeset already exists:', newCodeset.codeset);
-      return NextResponse.json({ success: false, error: 'Codeset already exists' }, { status: 409 });
-    }
-
-    parseResult.data.push(newCodeset);
-    const updatedCsv = Papa.unparse(parseResult.data);
-    console.log('Generated updated CSV length:', updatedCsv.length);
-
-    await fs.writeFile(filePath, updatedCsv);
-    console.log('Successfully wrote updated CSV');
-
-    return NextResponse.json({ success: true, message: 'Codeset added successfully' });
-
-  } catch (error) {
-    console.error('POST handler error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Failed to add codeset' 
-    }, { status: 500 });
-  } */
-
-    await appendToCSV(filePath, newCodeset);
-
+    const filePath = path.join(USER_DATA_PATH, org_key, module_key, 'codesetvalues.csv');
+    await validateAccess(filePath);
+    await CSVProcessor.appendToCSV(filePath, newCodeset);
+    
+    cache.delete(getCacheKey(org_key, module_key));
+    console.log('Codeset added successfully');
     return NextResponse.json({ 
       success: true, 
       message: 'Codeset added successfully' 
     });
 
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Failed to add codeset';
-    const status = message.includes('Duplicate') ? 409 : 500;
-    
+    console.error('POST Error:', error);
+    const status = error instanceof Error && error.message.includes('Duplicate') ? 409 : 500;
     return NextResponse.json({ 
       success: false, 
-      error: message 
+      error: error instanceof Error ? error.message : 'Server error' 
     }, { status });
   }
-
-
-
 }
 
 export async function PUT(request: Request) {
@@ -276,62 +274,34 @@ export async function PUT(request: Request) {
     const org_key = searchParams.get('org_key');
     const module_key = searchParams.get('module_key');
     const { nodeId, description } = await request.json();
-    
-    console.log('PUT parameters:', { org_key, module_key, nodeId, description });
+
+    console.log('Request parameters:', { org_key, module_key, nodeId, description });
 
     if (!org_key || !module_key) {
       console.warn('Missing required parameters');
-      return NextResponse.json({ success: false, error: 'Missing org_key or module_key' }, { status: 400 });
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Missing parameters' 
+      }, { status: 400 });
     }
 
-    const filePath = getFilePath(org_key, module_key);
-    console.log('Attempting to update file:', filePath);
-
-    if (!(await fileExists(filePath))) {
-      console.warn('Target file not found:', filePath);
-      return NextResponse.json({ success: false, error: 'File not found' }, { status: 404 });
-    }
-
-    const parseResult = await readAndParseCSV(filePath);
-    console.log('Current data rows:', parseResult.data.length);
-
-    let updated = false;
-    const updatedData = parseResult.data.map(row => {
-      if (row.field === nodeId) {
-        updated = true;
-        return {
-          ...row,
-          Description: description
-        };
-      }
-      return row;
+    const filePath = path.join(USER_DATA_PATH, org_key, module_key, 'codesetvalues.csv');
+    await validateAccess(filePath);
+    await CSVProcessor.updateCSV(filePath, nodeId, { Description: description });
+    
+    cache.delete(getCacheKey(org_key, module_key));
+    console.log('Codeset updated successfully');
+    return NextResponse.json({ 
+      success: true, 
+      message: 'Codeset updated successfully' 
     });
 
-
-    if (!updated) {
-      console.warn('Codeset not found:', nodeId);
-      return NextResponse.json({ success: false, error: 'Codeset not found' }, { status: 404 });
-    }
-
-    const headerContent = (await fs.readFile(filePath, 'utf-8'))
-      .split('\n')
-      .slice(0, 2)
-      .join('\n');
-
-
-    const updatedCsv = Papa.unparse(updatedData);
-    console.log('Generated updated CSV length:', updatedCsv.length);
-
-    await fs.writeFile(filePath, `${headerContent}\n${updatedCsv}`);
-    console.log('Successfully wrote updated CSV');
-
-    return NextResponse.json({ success: true, message: 'Codeset updated successfully' });
-
   } catch (error) {
-    console.error('PUT handler error:', error);
+    console.error('PUT Error:', error);
+    const status = error instanceof Error && error.message.includes('not found') ? 404 : 500;
     return NextResponse.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : 'Failed to update codeset' 
-    }, { status: 500 });
+      error: error instanceof Error ? error.message : 'Server error' 
+    }, { status });
   }
 }

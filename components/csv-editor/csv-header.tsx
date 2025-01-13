@@ -123,9 +123,9 @@ export function CsvHeader({
               </TooltipContent>
             </Tooltip>
 
-            <AddRowDialog onAddRow={onAddRow} />
+            
 
-            <Separator orientation="vertical" className="h-6" />
+            
 
             <Tooltip>
               <TooltipTrigger asChild>
@@ -172,7 +172,7 @@ export function CsvHeader({
         </div>
 
         {/* Right side controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-8">
           <TooltipProvider delayDuration={300}>
             {/* <Tooltip>
               <TooltipTrigger asChild>
@@ -190,6 +190,9 @@ export function CsvHeader({
                 <p>Download as CSV file</p>
               </TooltipContent>
             </Tooltip> */}
+
+            <AddRowDialog onAddRow={onAddRow} />
+            
 
             <Tooltip>
               <TooltipTrigger asChild>

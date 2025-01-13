@@ -1,85 +1,123 @@
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { Label } from '@/components/ui/label';
+import { useCodesetManager } from '@/hooks/use-codeset-manager';
+import { Loader2 } from 'lucide-react';
 
 interface AddCodesetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  existingCodesets: string[];
 }
 
 export function AddCodesetDialog({
   open,
   onOpenChange,
-  onSuccess,
-  existingCodesets
+  onSuccess
 }: AddCodesetDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [type, setType] = useState('');
-  const [description, setDescription] = useState('');
+  const [newCodeset, setNewCodeset] = useState({
+    field: '',
+    Type: '',
+    Level: 'Level_001',
+    parentPath: '',
+    Code: '',
+    Description: ''
+  });
+
   const { toast } = useToast();
   const searchParams = useSearchParams();
+  const { 
+    fetchExistingCodesets, 
+    generateNextFieldNumber,
+    validateFieldNumber,
+    reset,
+    loading: fieldsLoading 
+  } = useCodesetManager();
 
-  const generateNextField = (): string => {
-    const numbers = existingCodesets
-      .map(code => parseInt(code.replace('field', '')))
-      .filter(num => !isNaN(num));
-    
-    const nextNum = numbers.length > 0 
-      ? Math.max(...numbers) + 1 
-      : 1;
-    
-    return `field${String(nextNum).padStart(3, '0')}`;
-  };
+  // Auto-generate field number when dialog opens
+  useEffect(() => {
+    if (open) {
+      const loadNextField = async () => {
+        try {
+          const org_key = searchParams.get('org_key');
+          const module_key = searchParams.get('module_key');
+          
+          if (!org_key || !module_key) {
+            throw new Error('Missing required parameters');
+          }
 
-  const generateCode = (desc: string): string => {
-    return desc.toUpperCase().replace(/\s+/g, '_');
-  };
+          const existingFields = await fetchExistingCodesets(org_key, module_key);
+          const nextField = generateNextFieldNumber(existingFields);
+          
+          setNewCodeset(prev => ({
+            ...prev,
+            field: nextField
+          }));
+        } catch (error) {
+          console.error('Error loading field number:', error);
+          toast({
+            title: "Error",
+            description: "Failed to generate field number",
+            variant: "destructive"
+          });
+        }
+      };
+      
+      loadNextField();
+    } else {
+      // Reset form when dialog closes
+      setNewCodeset({
+        field: '',
+        Type: '',
+        Level: 'Level_001',
+        parentPath: '',
+        Code: '',
+        Description: ''
+      });
+      reset();
+    }
+  }, [open]);
 
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      const newField = generateNextField();
-      const code = generateCode(description);
-      
+      const org_key = searchParams.get('org_key');
+      const module_key = searchParams.get('module_key');
+
+      if (!newCodeset.field || !validateFieldNumber(newCodeset.field)) {
+        throw new Error('Invalid field number');
+      }
+
       const response = await fetch(
-        `/edit/api/codesets?org_key=${searchParams.get('org_key')}&module_key=${searchParams.get('module_key')}`,
+        `/edit/api/codesets?org_key=${org_key}&module_key=${module_key}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            newCodeset: {
-              field: newField,
-              Type: type,
-              Level: 'LEVEL_001',
-              Code: code,
-              Description: description
-            }
-          })
+          body: JSON.stringify({ newCodeset })
         }
       );
 
-      if (!response.ok) throw new Error('Failed to add codeset');
+      if (!response.ok) {
+        throw new Error('Failed to add codeset');
+      }
 
       toast({
-        title: 'Success',
-        description: `Added new codeset: ${newField}`
+        title: "Success",
+        description: `Added new codeset with field number ${newCodeset.field}`
       });
 
       onSuccess();
       onOpenChange(false);
-      setType('');
-      setDescription('');
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to add codeset',
-        variant: 'destructive'
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to add codeset",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
@@ -95,36 +133,65 @@ export function AddCodesetDialog({
         
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>Field Number (Auto-generated)</Label>
             <Input
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              placeholder="Enter type"
+              value={newCodeset.field}
+              readOnly
+              className="bg-gray-50 cursor-not-allowed font-mono"
+              placeholder={fieldsLoading ? "Generating..." : "Auto-generated"}
             />
           </div>
           
           <div className="space-y-2">
-            <Label>Description</Label>
+            <Label>Type</Label>
             <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter description"
+              value={newCodeset.Type}
+              onChange={(e) => setNewCodeset({...newCodeset, Type: e.target.value.toUpperCase()})}
+              placeholder="e.g., ACTIVITY"
+              className="uppercase"
             />
           </div>
 
-          {description && (
-            <div className="text-sm text-muted-foreground">
-              Code will be: {generateCode(description)}
-            </div>
-          )}
+          <div className="space-y-2">
+            <Label>Parent Path</Label>
+            <Input
+              value={newCodeset.parentPath}
+              onChange={(e) => setNewCodeset({...newCodeset, parentPath: e.target.value.toUpperCase()})}
+              placeholder="e.g., ACTIVITY#CLEANINGUPD"
+              className="uppercase"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Code</Label>
+            <Input
+              value={newCodeset.Code}
+              onChange={(e) => setNewCodeset({...newCodeset, Code: e.target.value.toUpperCase()})}
+              placeholder="e.g., PC_CLEANING"
+              className="uppercase"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Input
+              value={newCodeset.Description}
+              onChange={(e) => setNewCodeset({...newCodeset, Description: e.target.value})}
+              placeholder="e.g., Post-Construction Cleanup"
+            />
+          </div>
         </div>
 
         <DialogFooter>
           <Button
             onClick={handleSubmit}
-            disabled={loading || !type.trim() || !description.trim()}
+            disabled={loading || fieldsLoading || !newCodeset.Type || !newCodeset.Code}
+            className="w-full"
           >
-            {loading ? 'Adding...' : 'Add Codeset'}
+            {(loading || fieldsLoading) && (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            )}
+            Add Codeset
           </Button>
         </DialogFooter>
       </DialogContent>

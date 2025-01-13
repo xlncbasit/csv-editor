@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
 import { Plus, X, Loader2 } from 'lucide-react';
 import HierarchicalCodesetEditor from '../codeset/hierarchial-codeset-selector';
+import { useCodesetManager } from '@/hooks/use-codeset-manager';
 
 interface CodesetValue {
   codeset: string;
@@ -20,7 +21,6 @@ interface CodesetValue {
   field: string;
   listValues?: string[];
 }
-
 
 interface ListValueDialogProps {
   open: boolean;
@@ -41,97 +41,111 @@ export function EnhancedListValueDialog({
 }: ListValueDialogProps) {
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const { fetchExistingCodesets, generateNextFieldNumber } = useCodesetManager();
   const [values, setValues] = useState<string[]>(() => 
-    initialValues ? initialValues.split('#') : ['']
+    initialValues ? initialValues.split('#').filter(v => v.trim()) : []
   );
   const [codesets, setCodesets] = useState<CodesetValue[]>([]);
   const [selectedCodeset, setSelectedCodeset] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null); 
+  const [error, setError] = useState<string | null>(null);
+  const [generatedField, setGeneratedField] = useState<string>('');
   const [newCodeset, setNewCodeset] = useState({
     field: '',
     Type: '',
-    Level:'',
+    Level: 'Level_001',
     parentPath: '',
     Code: '',
     Description: ''
   });
+
+  useEffect(() => {
+    const generateFieldNumber = async () => {
+      if (listType === 'Codeset' && open) {
+        try {
+          const org_key = searchParams.get('org_key');
+          const module_key = searchParams.get('module_key');
+          const existingFields = await fetchExistingCodesets(org_key, module_key);
+          const nextField = generateNextFieldNumber(existingFields);
+          setGeneratedField(nextField);
+          setNewCodeset(prev => ({
+            ...prev,
+            field: nextField
+          }));
+          
+          // Load existing codesets
+          const response = await fetch(
+            `/edit/api/codesets?org_key=${org_key}&module_key=${module_key}`
+          );
+          const data = await response.json();
+          if (data.success) {
+            setCodesets(data.codesets);
+          }
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Failed to initialize';
+          setError(message);
+          toast({
+            title: "Error",
+            description: message,
+            variant: "destructive"
+          });
+        }
+      }
+    };
+
+    generateFieldNumber();
+  }, [open, listType]);
+
   const handleCodesetSelect = (value: string) => {
-    console.log('Selected value:', value); // Debug log
     setSelectedCodeset(value);
     toast({
       title: "Codeset Selected"
     });
   };
-  
 
-
-  useEffect(() => {
-    if (listType === 'Codeset' && open) {
-      loadCodesets();
-    }
-  }, [listType, open]);
-
-  const loadCodesets = async () => {
+  const handleAddCodeset = async () => {
     try {
       setLoading(true);
       const org_key = searchParams.get('org_key');
       const module_key = searchParams.get('module_key');
       
-      const response = await fetch(
-        `/edit/api/codesets?org_key=${org_key}&module_key=${module_key}`
-      );
-      const data = await response.json();
-      
-      if (data.success) {
-        setCodesets(data.codesets);
+      if (!generatedField || !newCodeset.Type || !newCodeset.Code) {
+        throw new Error('Please fill in all required fields');
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to load codesets",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleAddCodeset = async () => {
-    try {
-      const org_key = searchParams.get('org_key');
-      const module_key = searchParams.get('module_key');
-      
+      const codesetToAdd = {
+        ...newCodeset,
+        field: generatedField,
+        Level: newCodeset.Level || 'Level_001'
+      };
+
       const response = await fetch(
         `/edit/api/codesets?org_key=${org_key}&module_key=${module_key}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ newCodeset })
+          body: JSON.stringify({ newCodeset: codesetToAdd })
         }
       );
 
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "New codeset added successfully"
-        });
-        loadCodesets();
-        setNewCodeset({
-          field: '',
-          Type: '',
-          Level:'',
-          parentPath: '',
-          Code: '',
-          Description: ''
-        });
+      if (!response.ok) {
+        throw new Error('Failed to add codeset');
       }
+
+      toast({
+        title: "Success",
+        description: "New codeset added successfully"
+      });
+      onOpenChange(false);
+
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add new codeset",
+        description: error instanceof Error ? error.message : "Failed to add codeset",
         variant: "destructive"
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -176,60 +190,57 @@ export function EnhancedListValueDialog({
               <TabsContent value="add">
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                  <div>
+                    <div>
                       <label className="text-sm font-medium">Codeset Field</label>
                       <Input
-                        value={newCodeset.field}
-                        onChange={e => setNewCodeset({...newCodeset, field: e.target.value})}
-                        placeholder="Enter codeset Field Number"
+                        value={generatedField}
+                        readOnly
+                        className="bg-gray-50 cursor-not-allowed font-mono"
+                        placeholder="Auto-generated"
                       />
                     </div>
                     <div>
-                      <label className="text-sm font-medium">Codeset Type</label>
+                      <label className="text-sm font-medium">Type</label>
                       <Input
                         value={newCodeset.Type}
-                        onChange={e => setNewCodeset({...newCodeset, Type: e.target.value})}
-                        placeholder="Enter codeset type"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium">Level</label>
-                      <Input
-                        value={newCodeset.Level}
-                        onChange={e => setNewCodeset({...newCodeset, Level: e.target.value})}
-                        placeholder="Enter level"
+                        onChange={e => setNewCodeset({...newCodeset, Type: e.target.value.toUpperCase()})}
+                        placeholder="e.g., ACTIVITY"
+                        className="uppercase"
                       />
                     </div>
                     <div>
                       <label className="text-sm font-medium">Parent Path</label>
                       <Input
                         value={newCodeset.parentPath}
-                        onChange={e => setNewCodeset({...newCodeset, parentPath: e.target.value})}
-                        placeholder="Enter parent path"
+                        onChange={e => setNewCodeset({...newCodeset, parentPath: e.target.value.toUpperCase()})}
+                        placeholder="e.g., ACTIVITY#CLEANINGUPD"
+                        className="uppercase"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">Code</label>
+                      <Input
+                        value={newCodeset.Code}
+                        onChange={e => setNewCodeset({...newCodeset, Code: e.target.value.toUpperCase()})}
+                        placeholder="e.g., PC_CLEANING"
+                        className="uppercase"
                       />
                     </div>
                   </div>
                   
                   <div>
-                    <label className="text-sm font-medium">Code</label>
-                    <Input
-                      value={newCodeset.Code}
-                      onChange={e => setNewCodeset({...newCodeset, Code: e.target.value})}
-                      placeholder="Enter code"
-                    />
-                  </div>
-                  <div>
                     <label className="text-sm font-medium">Description</label>
                     <Input
                       value={newCodeset.Description}
                       onChange={e => setNewCodeset({...newCodeset, Description: e.target.value})}
-                      placeholder="Enter description"
+                      placeholder="e.g., Post-Construction Cleanup"
                     />
                   </div>
+
                   <Button
                     onClick={handleAddCodeset}
                     className="w-full"
-                    disabled={!newCodeset.Type || !newCodeset.Code || loading}
+                    disabled={loading || !newCodeset.Type || !newCodeset.Code}
                   >
                     {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Add New Codeset

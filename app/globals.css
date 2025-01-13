@@ -1,10 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    /* System Colors */
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -26,23 +27,16 @@
     --ring: 240 5.9% 10%;
     --radius: 0.75rem;
 
-    /* Brand Colors */
     --fm-yellow: 42 98% 53%;
     --fm-teal: 186 59% 53%;
     --fm-blue: 228 47% 44%;
     --fm-grey: 0 0% 96%;
 
-    /* Chart Colors */
     --chart-1: 215 100% 50%;
     --chart-2: 142 100% 50%;
     --chart-3: 47 100% 50%;
     --chart-4: 316 100% 50%;
     --chart-5: 191 100% 50%;
-
-    /* Animation Timings */
-    --transition-fast: 150ms;
-    --transition-normal: 250ms;
-    --transition-slow: 350ms;
   }
 
   .dark {
@@ -69,139 +63,188 @@
 }
 
 @layer base {
-  * {
+  * 
+  {
     @apply border-border;
+  }
+  html {
+    font-family: 'Poppins';
+    font-weight: 400;
   }
   body {
     @apply bg-background text-foreground antialiased;
   }
-  input[type="number"]::-webkit-inner-spin-button,
-  input[type="number"]::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+  h1 {
+    @apply text-black font-bold text-center py-5 text-[1.3rem];
   }
-  input[type="number"] {
-    -moz-appearance: textfield;
+
+  h2 {
+    @apply text-black font-bold text-left py-5;
+  }
+
+  h3 {
+    @apply text-black font-bold text-left py-5;
+  }
+
+  h4 {
+    @apply text-black font-bold text-center py-5 text-[1.2rem];
+  }
+
+  h5 {
+    @apply text-black font-bold text-left py-5 text-[4rem];
+  }
+
+  p {
+    @apply text-black font-normal text-left text-[0.8rem];
+  }
+
+  li {
+    @apply text-black font-normal text-left py-2.5 text-[0.8rem];
   }
 }
 
 @layer components {
-  .fieldmobi-container {
-    @apply flex min-h-screen flex-col w-full max-w-full overflow-hidden;
+  .txtcolyellow {
+    @apply text-[#fdbb11];
   }
 
-  .fieldmobi-sidebar {
-    @apply w-64 bg-[#3A53A3] flex flex-col flex-shrink-0 border-r-4 border-black overflow-y-auto;
+  .txtcolteal {
+    @apply text-[#41C1CF];
   }
 
-  .fieldmobi-main {
-    @apply flex-1 bg-[#41C1CF] overflow-auto p-6;
+  .txtcolblue {
+    @apply text-[#3A53A3];
   }
 
-  .fieldmobi-card {
-    @apply bg-white rounded-[20px] border-2 border-black shadow-lg p-6;
+  .txtcolwhite {
+    @apply text-white;
   }
 
-  .fieldmobi-button {
-    @apply inline-flex items-center justify-center rounded-[25px] px-4 py-2 text-sm font-medium transition-colors 
-    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50
-    bg-[#3A53A3] text-white hover:bg-[#2A437F] border-2 border-black;
+  .txtcolblack {
+    @apply text-black;
   }
 
-  .fieldmobi-input {
-    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm
-    ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium
-    placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2
-    focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+  .txtmiddle {
+    @apply text-center;
   }
 
-  .fieldmobi-table {
-    @apply w-full border-collapse bg-white text-sm;
+  .txtleft {
+    @apply text-left;
   }
 
-  .fieldmobi-th {
-    @apply border-b bg-black text-left align-middle font-medium text-white p-4;
+  .midtext {
+    @apply font-medium text-[#3A53A3] rounded-[25px];
   }
 
-  .fieldmobi-td {
-    @apply border-b p-4 align-middle;
+  .midtext:hover {
+    @apply bg-[#41C1CF] border-2 border-black text-black px-5 py-[5px] rounded-[25px];
   }
 
-  .fieldmobi-cell {
-    @apply px-4 py-2 min-w-[150px] h-full text-sm transition-colors hover:bg-gray-50;
+  /* Size utilities */
+  .psize {
+    @apply text-[0.8rem];
   }
 
-  .fieldmobi-cell-editing {
-    @apply p-0;
+  .plabel {
+    @apply text-[0.6rem] font-medium;
   }
 
-  .fieldmobi-cell-input {
-    @apply w-full h-full px-4 py-2 border-2 border-[#3A53A3] focus:ring-2 focus:ring-[#41C1CF];
+  .psearch {
+    @apply text-[0.8rem] font-medium;
   }
 
-  .fieldmobi-toast {
-    @apply bg-white rounded-lg border-2 border-black shadow-lg;
+  .phead {
+    @apply text-[0.9rem] font-medium;
+  }
+
+  .pfield {
+    @apply text-base font-medium;
+  }
+
+  /* Background colors */
+  .bgyellow {
+    @apply bg-[#fdbb11];
+  }
+
+  .bgteal {
+    @apply bg-[#41C1CF];
+  }
+
+  .bgblue {
+    @apply bg-[#3A53A3];
+  }
+
+  .bggrey {
+    @apply bg-[#f4f4f4];
+  }
+
+  /* Border utilities */
+  .roundedborder {
+    @apply rounded-[50px] px-5 py-[5px];
+  }
+
+  .roundedborder2 {
+    @apply rounded-[100px];
+  }
+
+  .blackborder {
+    @apply border-2 border-black;
+  }
+
+  .blackborder2 {
+    @apply border-[6px] border-black rounded-[50px];
+  }
+
+  .blackborder3 {
+    @apply border-4 border-black rounded-[10px];
+  }
+
+  /* Navigation */
+  .navsignup {
+    @apply bg-[#fdbb11] border-2 border-black text-black px-5 py-[5px] rounded-[25px];
+  }
+
+  .navsignupteal {
+    @apply bg-[#41C1CF] border-2 border-black text-black px-5 py-[5px] rounded-[25px];
+  }
+
+  .navsignupblue {
+    @apply bg-[#3A53A3] border-2 border-black text-black px-5 py-[5px] rounded-[25px];
+  }
+
+  /* Hover effects */
+  .hovercolor:hover {
+    @apply text-[#fdbb11];
+  }
+
+  .hovercolor {
+    @apply text-[#41C1CF] font-medium;
+  }
+
+  .hovercolor2:hover {
+    @apply text-white;
+  }
+
+  .hovercolor2 {
+    @apply text-[#fdbb11];
   }
 }
 
-@layer utilities {
-  .fieldmobi-scrollbar {
-    @apply scrollbar-thin scrollbar-thumb-[#3A53A3] scrollbar-track-[#41C1CF];
-  }
-
-  .fieldmobi-no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .fieldmobi-no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-}
-
-/* Custom scrollbar styles */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  @apply w-2 h-2;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 4px;
+  @apply bg-gray-100 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #3A53A3;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #2A437F;
-}
-
-/* Animation keyframes */
-@keyframes slideIn {
-  from {
-    transform: translateY(10px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
+  @apply bg-[#3A53A3] rounded-full hover:bg-[#2A437F];
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.animate-slide-in {
-  animation: slideIn 0.3s ease-out;
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {

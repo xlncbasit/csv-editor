@@ -1,11 +1,11 @@
-// app/api/save-config/route.ts
 import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
 import { CsvRow } from '@/components/csv-editor/types';
 
-const CONFIG_PATH = '/opt/tomcat/webapps/ROOT/upload/configfiles';
-const CODESET_PATH = '/opt/tomcat/webapps/ROOT/upload/codesetfiles';
+const TOMCAT_CONFIG_PATH = '/opt/tomcat/webapps/ROOT/upload/configfiles';
+const TOMCAT_CODESET_PATH = '/opt/tomcat/webapps/ROOT/upload/codefiles';
+const BASE_PATH = '/FM/repo/verceldeploy/data/users';
 
 interface SaveConfigRequest {
   csvContent: {
@@ -23,62 +23,57 @@ export async function POST(request: Request) {
     const body = await request.json() as SaveConfigRequest;
     const { csvContent } = body;
 
-    if (!org_key || !module_key) {
+    if (!org_key || !module_key || !csvContent?.rows?.length) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Missing required parameters' 
+        error: 'Missing required parameters or invalid CSV content' 
       }, { status: 400 });
     }
 
-    if (!csvContent?.rows?.length) {
-      return NextResponse.json({
-        success: false,
-        error: 'Invalid CSV content'
-      }, { status: 400 });
-    }
-
-    // Create timestamp for backup
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    
-    // Ensure directories exist
-    await fs.mkdir(CONFIG_PATH, { recursive: true });
-    await fs.mkdir(CODESET_PATH, { recursive: true });
+    const csvString = [
+      ...csvContent.headerRows.map(row => row.join(',')),
+      ...csvContent.rows.map(row => row.data.join(','))
+    ].join('\n');
 
-    // Prepare CSV content
-    const headerContent = csvContent.headerRows
-      .map(row => row.join(','))
-      .join('\n');
+    // Save to Tomcat directories
+    await fs.mkdir(TOMCAT_CONFIG_PATH, { recursive: true });
+    await fs.mkdir(TOMCAT_CODESET_PATH, { recursive: true });
     
-    const dataContent = csvContent.rows
-      .map(row => row.data.join(','))
-      .join('\n');
+    const tomcatConfigPath = path.join(TOMCAT_CONFIG_PATH, 'config.csv');
+    await fs.writeFile(tomcatConfigPath, csvString, 'utf-8');
+
+    // Save to FM repo directory
+    const fmConfigPath = path.join(BASE_PATH, org_key, module_key, 'config.csv');
+    const fmCodesetPath = path.join(BASE_PATH, org_key, module_key, 'codesetvalues.csv');
     
-    const csvString = `${headerContent}\n${dataContent}`;
+    await fs.mkdir(path.dirname(fmConfigPath), { recursive: true });
+    await fs.writeFile(fmConfigPath, csvString, 'utf-8');
 
-    // Save config file with backup
-    const configBackupPath = path.join(CONFIG_PATH, `config.csv`);
-    console.log('Saving configuration to:', configBackupPath);
-    await fs.writeFile(configBackupPath, csvString, 'utf-8');
-    console.log('Configuration file saved successfully');
-
-    // Save codeset file if exists
+    // Handle codesets
     const codesetRows = csvContent.rows.filter(row => row.data[1] === 'CAT');
     if (codesetRows.length > 0) {
-      const codesetBackupPath = path.join(CODESET_PATH, `codesetvalues.csv`);
-      const codesetContent = codesetRows
-        .map(row => row.data.join(','))
-        .join('\n');
-      await fs.writeFile(codesetBackupPath, codesetContent, 'utf-8');
+      const codesetContent = codesetRows.map(row => row.data.join(',')).join('\n');
+      
+      await fs.writeFile(path.join(TOMCAT_CODESET_PATH, 'codesetvalues.csv'), codesetContent, 'utf-8');
+      await fs.writeFile(fmCodesetPath, codesetContent, 'utf-8');
     }
 
     return NextResponse.json({
       success: true,
       message: 'Configuration saved successfully',
-      backup: {
-        config: configBackupPath,
-        codeset: codesetRows.length > 0
+      paths: {
+        tomcat: {
+          config: tomcatConfigPath,
+          codeset: path.join(TOMCAT_CODESET_PATH, 'codesetvalues.csv')
+        },
+        fm: {
+          config: fmConfigPath,
+          codeset: fmCodesetPath
+        }
       }
     });
+
   } catch (error) {
     console.error('Save config error:', error);
     return NextResponse.json({

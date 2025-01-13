@@ -1,3 +1,8 @@
+export interface Position {
+  row: number;
+  col: number;
+}
+
 export interface CsvRow {
     id: string;
     data: string[];
@@ -7,15 +12,21 @@ export interface CsvRow {
     row: number;
     col: number;
   }
+
+  export interface PositionPair {
+    filtered: Position;
+    absolute: Position;
+  }
   
   export interface CellMapping {
-    original: CellPosition;
-    transposed: CellPosition;
+    original: Position;
+    transposed: Position;
     fieldCode: string;
     columnHeader: string;
     fieldType?: string;
     listType?: string;
     listValues?: string[];
+    uniqueId: string;
 
   }
   

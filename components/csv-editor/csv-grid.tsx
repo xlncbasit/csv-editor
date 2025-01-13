@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { CsvHeader } from './csv-header';
 import { EnhancedCsvCell } from './csv-cell';
 import { CsvPositionMapper } from './csv-position-mapper';
 import { CsvRow, MappedCell, CsvGridProps } from './types';
 import { downloadCsv, parseCsvString } from '@/lib/csv-utils';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ListTypeState {
   [fieldCode: string]: {
@@ -16,80 +16,61 @@ interface ListTypeState {
   };
 }
 
-export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
+export const CsvGrid = forwardRef<any, CsvGridProps>(({ initialData = [], onDataChange }, ref) => {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   
-  // Your existing state declarations
   const [headerRows, setHeaderRows] = useState<string[][]>([]);
   const [displayHeaders, setDisplayHeaders] = useState<string[]>([]);
   const [originalHeaders, setOriginalHeaders] = useState<string[]>([]);
-  const [originalRows, setOriginalRows] = useState<CsvRow[]>(
-    initialData.length > 0 
-      ? initialData 
-      : [{
-          id: '1',
-          data: ['fieldCode001', '', 'DATA_FIELD_001', '', '', '', '', '', '', '', '']
-        }]
-  );
+  const [originalRows, setOriginalRows] = useState<CsvRow[]>(initialData);
   const [transposedData, setTransposedData] = useState<MappedCell[][]>([]);
-  const [hiddenFields, setHiddenFields] = useState<{[key: string]: boolean}>({
-    fieldCode: false,
-    empty: true
-  });
   const [listTypes, setListTypes] = useState<ListTypeState>({});
-  const [fieldTypes, setFieldTypes] = useState<{[key: string]: string}>({});
-  
-  // Add auto-loading effect
+
+  const filterHiddenRows = useCallback((rows: MappedCell[][]) => {
+    const hiddenValues = ['Link Setup', 'Update Setup', 'multi_group', 'hidden', 'visibility'];
+    return rows
+      .filter(row => {
+        const firstCell = row[0]?.value.toLowerCase();
+        return !hiddenValues.includes(firstCell) && row.some(cell => cell.value.trim() !== '');
+      });
+  }, []);
+
+  const positionMapper = useMemo(() => {
+    console.log('Creating new position mapper:', { rowCount: originalRows.length });
+    const mapper = new CsvPositionMapper(originalRows, originalHeaders);
+    const labelRow = originalRows[2]?.data || originalHeaders;
+    setDisplayHeaders(labelRow);
+    return mapper;
+  }, [originalRows, originalHeaders]);
+
   useEffect(() => {
     const loadConfig = async () => {
       try {
         const org_key = searchParams.get('org_key');
         const module_key = searchParams.get('module_key');
         
-        if (!org_key || !module_key) {
-          throw new Error('Missing required parameters: org_key and module_key');
-        }
-
-        console.log('Loading config:', { org_key, module_key });
+        if (!org_key || !module_key) throw new Error('Missing parameters');
 
         const response = await fetch(`/edit/api/load-config?org_key=${org_key}&module_key=${module_key}`);
         const data = await response.json();
 
-        if (!data.success || !data.csvContent) {
-          throw new Error(data.error || 'Could not load configuration file');
-        }
+        if (!data.success) throw new Error(data.error || 'Load failed');
 
-        // Parse the CSV content
-        const { headers, rows, headerRows: parsedHeaderRows } = parseCsvString(data.csvContent);
-        console.log('Parsed data:', { 
-          headerCount: headers.length,
-          rowCount: rows.length,
-          headerRowCount: parsedHeaderRows.length 
-        });
+        const { headers, rows, headerRows: parsedHeaders } = parseCsvString(data.csvContent);
 
-        // Update state with loaded data
         setOriginalHeaders(headers);
         setOriginalRows(rows);
-        setHeaderRows(parsedHeaderRows);
+        setHeaderRows(parsedHeaders);
+        if (rows[3]) setDisplayHeaders(rows[3].data);
 
-        // Extract and set display headers
-        if (rows[3]) {
-          setDisplayHeaders(rows[3].data);
-        }
-
-        // Initialize list types from loaded data
+        // Process list types
         const loadedListTypes: ListTypeState = {};
         rows.forEach(row => {
-          const fieldCode = row.data[0];
-          const fieldType = row.data[1];
-          const listType = row.data[8];
-          const listValue = row.data[9];
-
-          if (fieldType === 'CAT' && listType) {
-            loadedListTypes[fieldCode] = {
-              type: listType,
-              values: listValue ? listValue.split('#') : []
+          if (row.data[1] === 'CAT' && row.data[8]) {
+            loadedListTypes[row.data[0]] = {
+              type: row.data[8],
+              values: row.data[9] ? row.data[9].split('#') : []
             };
           }
         });
@@ -97,15 +78,14 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
 
         toast({
           title: "Configuration Loaded",
-          description: `Successfully loaded ${rows.length} rows of data`,
+          description: `${rows.length} rows loaded successfully`
         });
-
       } catch (error) {
-        console.error('Error loading config:', error);
+        console.error('Config load error:', error);
         toast({
           title: "Error",
-          description: error instanceof Error ? error.message : 'Failed to load configuration',
-          variant: "destructive",
+          description: error instanceof Error ? error.message : 'Load failed',
+          variant: "destructive"
         });
       }
     };
@@ -113,87 +93,42 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
     loadConfig();
   }, [searchParams, toast]);
 
-  // Your existing position mapper logic
-  const positionMapper = useMemo(() => {
-    console.log('Initializing position mapper:', {
-      rowCount: originalRows.length,
-      headerCount: originalHeaders.length
-    });
-    
-    const mapper = new CsvPositionMapper(originalRows, originalHeaders);
-    const labelRow = originalRows[2]?.data || originalHeaders;
-    setDisplayHeaders(labelRow);
-
-    return mapper;
-  }, [originalRows, originalHeaders]);
-
-  // Update transposed data when mapper changes
   useEffect(() => {
-    const mappedTransposed = positionMapper.transposeWithMapping();
-    console.log('Generated transposed data:', {
-      rowCount: mappedTransposed.length,
-      colCount: mappedTransposed[0]?.length || 0
-    });
-    setTransposedData(mappedTransposed);
+    const mappedData = positionMapper.transposeWithMapping();
+    console.log('Setting transposed data:', { rowCount: mappedData.length });
+    setTransposedData(mappedData);
   }, [positionMapper]);
 
-  const saveConfig = async (csvData: CsvRow[]) => {
-    const org_key = searchParams.get('org_key');
-    const module_key = searchParams.get('module_key');
-  
-    try {
+  // Inside csv-grid.tsx
 
-      const csvContent = {
-        headerRows: headerRows,
-        rows: csvData,
-        headers: originalHeaders
-      };
-      const response = await fetch(
-        `/edit/api/save-config?org_key=${org_key}&module_key=${module_key}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ csvContent })
-        }
-      );
-  
-      if (!response.ok) {
-        throw new Error('Failed to save configuration');
-      }
-      
-  
-      toast({
-        title: "Success",
-        description: "Configuration saved successfully"
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to save configuration",
-        variant: "destructive"
-      });
-    }
-  };
-  
-  
-  const handleSave = () => {
-    return saveConfig(originalRows);
-  };
   const handleCellUpdate = useCallback((
-    transposedRow: number,
-    transposedCol: number,
+    filteredRow: number,
+    filteredCol: number,
     newValue: string
   ) => {
     try {
-      const { updatedOriginal, updatedTransposed } = positionMapper.updateCell(
-        transposedRow,
-        transposedCol,
+      console.log('Cell Update:', {
+        filteredRow,
+        filteredCol,
+        newValue
+      });
+  
+      if (!positionMapper.validatePosition(filteredRow, filteredCol)) {
+        throw new Error('Invalid cell position');
+      }
+  
+      const { updatedOriginal, updatedTransposed, mapping } = positionMapper.updateCell(
+        filteredRow,
+        filteredCol,
         newValue
       );
-
-      const mapping = positionMapper.getMappingForTransposedPosition(transposedRow, transposedCol);
-      
+  
+      // Handle data updates
+      setOriginalRows(updatedOriginal);
+      setTransposedData(updatedTransposed);
+  
       if (mapping) {
+        // Handle special field types
         if (mapping.columnHeader === 'list_type' && mapping.fieldType === 'CAT') {
           setListTypes(prev => ({
             ...prev,
@@ -203,7 +138,7 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
             }
           }));
         }
-        
+  
         if (mapping.columnHeader === 'list_value' && mapping.fieldType === 'CAT') {
           setListTypes(prev => ({
             ...prev,
@@ -213,41 +148,58 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
             }
           }));
         }
-
-        if (mapping.columnHeader === 'field_type') {
-          setFieldTypes(prev => ({ ...prev, [mapping.fieldCode]: newValue }));
-          
-          // Reset list type data if field type changes from CAT
-          if (newValue !== 'CAT') {
-            setListTypes(prev => {
-              const updated = { ...prev };
-              delete updated[mapping.fieldCode];
-              return updated;
-            });
-          }
+  
+        // Update display headers if needed
+        if (mapping.original.row === 3) {
+          setDisplayHeaders(updatedOriginal[3].data);
         }
       }
-
-      setOriginalRows(updatedOriginal);
-      setTransposedData(updatedTransposed);
-      
-      if (mapping?.original.row === 3) {
-        setDisplayHeaders(updatedOriginal[3].data);
-      }
+  
     } catch (error) {
+      console.error('Update error:', error);
       toast({
-        title: "Error Updating Cell",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to update cell",
+        variant: "destructive"
       });
     }
   }, [positionMapper, toast]);
 
-  // Rest of the handlers remain the same
+  const handleSave = useCallback(async () => {
+    try {
+      const org_key = searchParams.get('org_key');
+      const module_key = searchParams.get('module_key');
+      
+      const response = await fetch(
+        `/edit/api/save-config?org_key=${org_key}&module_key=${module_key}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            csvContent: {
+              headerRows,
+              rows: originalRows,
+              headers: originalHeaders
+            }
+          })
+        }
+      );
+
+      if (!response.ok) throw new Error('Save failed');
+      
+      toast({ title: "Saved", description: "Configuration saved successfully" });
+    } catch (error) {
+      toast({
+        title: "Save Failed",
+        description: error instanceof Error ? error.message : "Save failed",
+        variant: "destructive"
+      });
+    }
+  }, [headerRows, originalRows, originalHeaders, searchParams, toast]);
+
   const handleAddRow = useCallback((fieldType: string) => {
     try {
-      const { updatedOriginal, updatedTransposed, newFieldCode } = 
-        positionMapper.addRow(fieldType);
+      const { updatedOriginal, updatedTransposed, newFieldCode } = positionMapper.addRow(fieldType);
 
       setOriginalRows(updatedOriginal);
       setTransposedData(updatedTransposed);
@@ -261,161 +213,82 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
 
       toast({
         title: "Row Added",
-        description: `Added new row with field code ${newFieldCode}`,
+        description: `New field code: ${newFieldCode}`
       });
     } catch (error) {
       toast({
-        title: "Error Adding Row",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
-      });
-    }
-  }, [positionMapper, toast]);
-
-  const handleAddColumn = useCallback(() => {
-    try {
-      const { updatedOriginal, updatedTransposed, updatedHeaders } = 
-        positionMapper.addColumn();
-
-      setOriginalHeaders(updatedHeaders);
-      setOriginalRows(updatedOriginal);
-      setTransposedData(updatedTransposed);
-      setDisplayHeaders(prev => [...prev, `Column ${prev.length + 1}`]);
-
-      toast({
-        title: "Column Added",
-        description: "Added new column successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error Adding Column",
-        description: error instanceof Error ? error.message : "An error occurred",
-        variant: "destructive",
-      });
-    }
-  }, [positionMapper, toast]);
-
-  // Existing handlers remain the same
-  const handleDownload = () => {
-    try {
-      const dataForDownload = originalRows.map(row => ({
-        ...row,
-        data: row.data.map(cell => cell || '')
-      }));
-      downloadCsv(dataForDownload, originalHeaders, headerRows);
-      
-      toast({
-        title: "Download Started",
-        description: "Your CSV file is being downloaded"
-      });
-    } catch (error) {
-      toast({
-        title: "Download Failed",
-        description: error instanceof Error ? error.message : "An error occurred",
+        title: "Add Failed",
+        description: error instanceof Error ? error.message : "Add failed",
         variant: "destructive"
       });
     }
-  };
+  }, [positionMapper, toast]);
 
-  const handleUpload = async (file: File) => {
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const content = e.target?.result as string;
-        const { headers, rows, headerRows: parsedHeaderRows } = parseCsvString(content);
-        
-        setOriginalHeaders(headers);
-        setOriginalRows(rows);
-        setHeaderRows(parsedHeaderRows);
-        
-        if (rows[2]) {
-          setDisplayHeaders(rows[2].data);
-        }
-        
-        // Initialize list types from uploaded data
-        const uploadedListTypes: ListTypeState = {};
-        rows.forEach(row => {
-          const fieldCode = row.data[0];
-          const fieldType = row.data[1];
-          const listType = row.data[8];
-          const listValue = row.data[9];
-
-          if (fieldType === 'CAT' && listType) {
-            uploadedListTypes[fieldCode] = {
-              type: listType,
-              values: listValue ? listValue.split('#') : []
-            };
-          }
-        });
-        setListTypes(uploadedListTypes);
-        
-        toast({
-          title: "File Uploaded",
-          description: `Successfully loaded ${rows.length} rows of data`,
-        });
-      };
-      reader.readAsText(file);
-    } catch (error) {
-      toast({
-        title: "Upload Failed",
-        description: "There was an error uploading your CSV file",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const toggleFieldVisibility = (field: string) => {
-    setHiddenFields(prev => ({
-      ...prev,
-      [field]: !prev[field]
-    }));
-  };
+  useImperativeHandle(ref, () => ({
+    handleAddRow,
+    handleSave
+  }));
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-4">
-      <CsvHeader
-        onAddColumn={handleAddColumn}
-        onAddRow={handleAddRow}
-        onDownload={handleDownload}
-        onUpload={handleUpload}
-        onSave={handleSave}
-        hiddenFields={hiddenFields}
-        onToggleVisibility={toggleFieldVisibility}
-      />
-      
-      <div className="border rounded-lg overflow-hidden bg-background">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b bg-black text-white">
-              {originalRows.map((row, index) => {
-                const header = row.data[3]; // Extract the 4th column (index 3) from each row
-                return (
-                  <th key={`header-${index}`} className="p-0 font-normal text-left">
-                    <EnhancedCsvCell
-                      value={header}
-                      isHeader
-                      onChange={() => {}}
-                      mapping={{
-                        original: { row: index, col: 3 },
-                        transposed: { row: index, col: 0 },
-                        fieldCode: row.data[0] || '',
-                        columnHeader: header.toLowerCase()
-                      }}
-                    />
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-
+    <div className="w-full h-[calc(100vh-12rem)] flex flex-col bg-white shadow-sm">
+      <ScrollArea className="flex-1 bg-white [&>div]:p-0 [&_.scrollbar]:ml-0">
+        <div className="w-full h-full relative">
+          <table className="w-full border-separate border-spacing-0">
+            <thead>
+              <tr>
+                {originalRows.map((row, index) => {
+                  if (index === 1) return null;
+                  const header = row.data[3];
+                  const uniqueId = `header-${index}-${row.data[0]}`; // Generate unique ID for header
+                  return (
+                    <th 
+                      key={`header-${index}`} 
+                      className="sticky top-0 bg-[#1a1a1a] text-white font-medium text-left p-0 first:rounded-tl-lg z-30"
+                    >
+                      <EnhancedCsvCell
+                        value={header}
+                        isHeader={true}
+                        forceReadOnly={true}
+                        onChange={() => {}}
+                        mapping={{
+                          original: { row: index, col: 3 },
+                          transposed: { row: 3, col: index },
+                          fieldCode: row.data[0] || '',
+                          columnHeader: header.toLowerCase(),
+                          uniqueId // Add uniqueId to mapping
+                        }}
+                      />
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
             <tbody>
-              {transposedData.map((row, rowIndex) => (
-                <tr key={`row-${rowIndex}`}>
+              {filterHiddenRows(transposedData).map((row, rowIndex) => (
+                <tr 
+                  key={`row-${rowIndex}`}
+                  className="group transition-colors hover:bg-gray-50/80"
+                >
                   {row.map((cell, cellIndex) => {
-                    const metadata = positionMapper.getCellMetadata(cell.mapping.fieldCode);
+                    // Get correct system row status from mapping
+                    const mapping = positionMapper.getMapping(rowIndex, cellIndex);
+                    const isSystemRow = mapping ? mapping.original.row <= 3 : false;
+                    const isNumeric = mapping ? (
+                      mapping.columnHeader.includes('cost') || 
+                      mapping.columnHeader.includes('price')
+                    ) : false;
+
                     return (
-                      <td key={`cell-${rowIndex}-${cellIndex}`} className="p-0">
+                      <td 
+                        key={`cell-${rowIndex}-${cellIndex}`}
+                        className={`
+                          relative p-0 transition-colors
+                          ${cellIndex === 0 ? 'sticky left-0 z-20 bg-[#3A53A3] text-white shadow-[1px_0_3px_-1px_rgba(0,0,0,0.15)] group-hover:bg-[#2A437F]' : 
+                            isSystemRow ? 'bg-white group-hover:bg-gray-50/80' : ''}
+                          ${isNumeric ? 'text-right' : ''}
+                          ${rowIndex === 0 ? 'border-t border-gray-100' : ''}
+                        `}
+                      >
                         <EnhancedCsvCell
                           value={cell.value}
                           mapping={cell.mapping}
@@ -437,9 +310,23 @@ export function CsvGrid({ initialData = [], onDataChange }: CsvGridProps) {
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr>
+                {originalRows[0]?.data.map((_, index) => (
+                  <td 
+                    key={`footer-${index}`} 
+                    className="h-2 bg-white sticky bottom-0 border-t border-gray-100"
+                  />
+                ))}
+              </tr>
+            </tfoot>
           </table>
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
-}
+});
+
+CsvGrid.displayName = 'CsvGrid';
+
+

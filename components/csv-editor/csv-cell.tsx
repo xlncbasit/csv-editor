@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EnhancedListValueDialog } from './enhanced-list-dialog';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ interface EnhancedCsvCellProps {
   mapping: CellMapping;
   orgKey?: string;
   moduleKey?: string;
+  forceReadOnly?: boolean;
   isHeader?: boolean;
   onChange: (value: string) => void;
   onFocus?: () => void;
@@ -42,7 +43,7 @@ const FIELD_TYPES = [
   'GEN', 'IMG', 'REM', 'TIM'
 ];
 
-const LIST_TYPES = ['Fixed', 'Codeset', 'Other'];
+const LIST_TYPES = ['Fixed', 'Codeset'];
 
 export function EnhancedCsvCell({ 
   value, 
@@ -51,11 +52,10 @@ export function EnhancedCsvCell({
   isHeader,  
   onFocus,
   className,
+  forceReadOnly,
   listTypes,
   onListTypeChange
 }: EnhancedCsvCellProps) {
-  console.log("Column Header:", mapping.columnHeader);
-  console.log("field type:", mapping.fieldType);
   const [editing, setEditing] = useState(false);
   const [cellValue, setCellValue] = useState(value);
   const [listDialogOpen, setListDialogOpen] = useState(false);
@@ -66,6 +66,20 @@ export function EnhancedCsvCell({
   const listTypeData = listTypes?.[fieldCode];
   const listType = listTypeData?.type;
   const listValues = listTypeData?.values;
+  const [isHovered, setisHovered] = useState(false);
+  
+
+  const isNonEditable = 
+    forceReadOnly ||
+    (mapping.original.col === 0) || // First column
+    (mapping.original.col === 1) ||
+    (mapping.original.col === 2) ||
+    (mapping.original.col === 26) ||
+    (mapping.original.row === 0) ||
+    (mapping.original.col === 8) ||
+    (mapping.original.col ===9);
+
+  
 
   const isFieldType = columnHeader.toLowerCase() === 'field_type';
   const isListType = columnHeader.toLowerCase() === 'list_type';
@@ -83,6 +97,12 @@ export function EnhancedCsvCell({
     }
   }, [editing]);
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (!isNonEditable && !isHeader) {
+      setEditing(true);
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -90,37 +110,48 @@ export function EnhancedCsvCell({
     } else if (e.key === 'Escape') {
       setCellValue(value);
       setEditing(false);
-    } else if (e.key === 'Tab') {
-      finishEditing();
-      if (cellRef.current) {
-        const nextCell = e.shiftKey 
-          ? cellRef.current.previousElementSibling
-          : cellRef.current.nextElementSibling;
-        (nextCell as HTMLElement)?.focus();
-      }
     }
   };
 
-  const finishEditing = () => {
+  const finishEditing = useCallback(() => {
     setEditing(false);
     if (cellValue !== value) {
+      console.log('Cell Edit Complete:', {
+        fieldCode: mapping.fieldCode,
+        columnHeader: mapping.columnHeader,
+        fieldType: mapping.fieldType,
+        oldValue: value,
+        newValue: cellValue,
+        position: {
+          original: mapping.original,
+          transposed: mapping.transposed,
+          uniqueId: mapping.uniqueId // Log the unique ID
+        }
+      });
       onChange(cellValue);
     }
-  };
+  }, [cellValue, value, mapping, onChange]);
 
   const getCellClassName = () => {
-    const labelValue = mapping.original.row === 3 ? value : ''; // Get value from label row
+    const labelValue = mapping.original.row === 3 ? value : '';
+    const isHiddenRow = ['Link Setup', 'Update Setup', 'multi_group', 'hidden'].includes(value.toLowerCase());
+    const shouldBeGray = isNonEditable && mapping.original.row !== 1 && mapping.original.row !== 0;
    
     return cn(
-      'px-4 py-2 min-w-[150px] h-full text-sm',
-      
-      
+      'px-3 py-2 min-w-[150px] h-[36px] w-full truncate whitespace-nowrap',
+      isHiddenRow && 'hidden',
+      shouldBeGray && 'bg-[#dee2e6] text-sm cursor-not-allowed',
+      isNonEditable && 'cursor-not-allowed',
+      isHeader && 'font-bold',
+      forceReadOnly && 'bg-black text-white hover:bg-black/90',
       labelValue,
+      mapping.original.row === 0 && 'cursor-not-allowed',
+      mapping.original.col === 0 && mapping.original.row !== 1 && !value.startsWith('fieldCode') && 'bg-[#3A53A3] text-white',
+      mapping.original.col === 0 && value.startsWith('fieldCode') && 'bg-[#dee2e6]',
+      !isNonEditable && !isHeader && 'bg-white cursor-text'
     );
-   };
-  
+  };
 
-  // Handle field type selection
   if (isFieldType && editing && !isHeader) {
     return (
       <div className="p-2">
@@ -131,6 +162,7 @@ export function EnhancedCsvCell({
             onChange(newValue);
             setEditing(false);
           }}
+          onOpenChange={(open) => !open && setEditing(false)}
         >
           <SelectTrigger className="w-full h-8 bg-white">
             <SelectValue placeholder="Select type" />
@@ -145,10 +177,20 @@ export function EnhancedCsvCell({
     );
   }
 
-  // Handle list type selection
-  if (isListType && !isHeader && isCatField) {
+  if (isListType && !isHeader) {
+    if (!isCatField) {
+      const isFirstColumn = mapping.original.row === 0;
+      return (
+        <div className={cn(
+          "px-3 py-2 cursor-not-allowed ",
+          isFirstColumn ? "bg-[#3A53A3] text-white" : "bg-[#dee2e6]"
+        )}>
+          {cellValue}
+        </div>
+      );
+    }
     return (
-      <div className="p-2 bg-blue-100">
+      <div className="h-[36px]">
         <Select 
           value={cellValue}
           onValueChange={(newValue) => {
@@ -157,38 +199,51 @@ export function EnhancedCsvCell({
             onListTypeChange?.(fieldCode, newValue);
           }}
         >
-          <SelectTrigger className="w-full bg-white border-gray-200 hover:bg-gray-50">
+          <SelectTrigger className="w-full h-[36px] bg-white border-gray-200 hover:bg-gray-50">
             <SelectValue placeholder="Select list type" />
           </SelectTrigger>
-          <SelectContent 
-            className="!bg-white [&_*]:!bg-white border rounded-md shadow-md overflow-hidden"
-            style={{ backgroundColor: 'white' }}
-          >
+          <SelectContent>
             {LIST_TYPES.map((type) => (
-              <SelectItem 
-                key={type} 
-                value={type}
-                className="hover:!bg-gray-50 cursor-pointer data-[highlighted]:!bg-gray-50"
-              >
-                {type}
-              </SelectItem>
+              <SelectItem key={type} value={type}>{type}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
     );
   }
+  if (isListValue && !isHeader) {
+    if (!isCatField) {
+      const isFirstColumn = mapping.original.row === 0;
+      return (
+        <div className={cn(
+          "px-3 py-2 cursor-not-allowed",
+          isFirstColumn ? "bg-[#3A53A3] text-white" : "bg-[#dee2e6]"
+        )}>
+          {cellValue}
+        </div>
+      );
+    }
 
-  // Handle list value editing
-  if (isListValue && !isHeader && isCatField) {
+    const handleListClick = () => {
+      if (isNonEditable) {
+        setListDialogOpen(true);
+      }
+    };
+  
     if (listType === 'Codeset') {
       return (
         <>
           <div 
-            className="px-4 py-2 cursor-pointer bg-blue-100"
-            onDoubleClick={() => setListDialogOpen(true)}
+            className="h-[36px] flex items-center justify-center cursor-pointer hover:bg-gray-50"
+            onClick={handleListClick}
           >
-            {cellValue || 'Click to select codeset'}
+            {cellValue ? (
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-300">
+                {cellValue}
+              </span>
+            ) : (
+              <span className="text-gray-400">Click to select codeset</span>
+            )}
           </div>
           <EnhancedListValueDialog
             open={listDialogOpen}
@@ -214,6 +269,7 @@ export function EnhancedCsvCell({
               setCellValue(e.target.value);
               onChange(e.target.value);
             }}
+            onBlur={() => setEditing(false)}
             placeholder="Enter reference key"
             className="h-8"
           />
@@ -224,10 +280,19 @@ export function EnhancedCsvCell({
     return (
       <>
         <div 
-          className="px-4 py-2 cursor-pointer bg-green-100"
-          onDoubleClick={() => setListDialogOpen(true)}
+          className="p-2 flex flex-wrap gap-1.5 cursor-pointer hover:bg-gray-50"
+          onClick={handleListClick}
         >
-          {cellValue || 'Click to edit values'}
+          {cellValue ? cellValue.split('#').map((value, idx) => (
+            <span
+              key={idx}
+              className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-300"
+            >
+              {value.trim()}
+            </span>
+          )) : (
+            <span className="text-gray-400">Click to add values</span>
+          )}
         </div>
         <EnhancedListValueDialog
           open={listDialogOpen}
@@ -241,15 +306,15 @@ export function EnhancedCsvCell({
         />
       </>
     );
+    
   }
 
-  // Handle regular cell editing
   if (editing && !isHeader) {
     return (
       <input
         ref={inputRef}
         type="text"
-        className="w-full h-full px-4 py-2 border-2 border-[#3A53A3] focus:ring-2 focus:ring-[#41C1CF] text-sm"
+        className="w-full h-full px-4 py-2 border-2 border-[#3A53A3] focus:ring-2 focus:ring-[#41C1CF] "
         value={cellValue}
         onChange={(e) => setCellValue(e.target.value)}
         onBlur={finishEditing}
@@ -258,27 +323,47 @@ export function EnhancedCsvCell({
     );
   }
 
-  // Regular cell display
   return (
     <div 
       ref={cellRef}
       className={getCellClassName()}
-      onDoubleClick={() => !isHeader && setEditing(true)}
+      onClick={handleClick}
       tabIndex={0}
       onFocus={onFocus}
+      onMouseEnter={() => !isNonEditable && !isHeader && setisHovered(true)}
+      onMouseLeave={() => setisHovered(false)}
+      title={isNonEditable ? "This cell cannot be edited." : "Click to edit"}
     >
-      {cellValue}
+      {isHovered ? (
+        <input
+          type="text"
+          className="w-full h-full px-4 py-2 border-2 border-[#3A53A3] focus:ring-2 focus:ring-[#41C1CF]"
+          value={cellValue}
+          onChange={(e) => setCellValue(e.target.value)}
+          onBlur={() => {
+            setisHovered(false);
+            finishEditing();
+          }}
+          onKeyDown={handleKeyDown}
+          autoFocus
+        />
+      ) : (
+        cellValue
+      )}
     </div>
   );
 }
 
 // For backward compatibility
 export function CsvCell(props: CsvCellProps) {
+  const uniqueId = `${props.fieldCode || ''}-${Date.now()}`; // Generate a unique ID
   return <EnhancedCsvCell {...props} mapping={{
     original: { row: 0, col: 0 },
     transposed: { row: 0, col: 0 },
     fieldCode: props.fieldCode || '',
     columnHeader: props.columnHeader || '',
-    fieldType: props.fieldType || ''
+    fieldType: props.fieldType || '',
+    uniqueId // Add the uniqueId property
   }} />;
 }
+
