@@ -19,8 +19,8 @@ export default function Home() {
     setData(newData);
   };
 
-  const handleAddRow = (fieldType: string) => {
-    csvGridRef.current?.handleAddRow(fieldType);
+  const handleAddRow = (fieldType: string, label:string) => {
+    csvGridRef.current?.handleAddRow(fieldType, label);
   };
 
   const handleAddColumn = () => {

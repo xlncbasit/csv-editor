@@ -24,6 +24,7 @@ export interface CsvRow {
     fieldCode: string;
     columnHeader: string;
     fieldType?: string;
+    label?: string;
     listType?: string;
     listValues?: string[];
     uniqueId: string;

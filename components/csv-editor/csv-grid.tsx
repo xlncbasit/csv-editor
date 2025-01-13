@@ -107,23 +107,27 @@ export const CsvGrid = forwardRef<any, CsvGridProps>(({ initialData = [], onData
     newValue: string
   ) => {
     try {
-      console.log('Cell Update:', {
-        filteredRow,
-        filteredCol,
-        newValue
-      });
+      const mapping = positionMapper.getMapping(filteredRow, filteredCol);
+      if (!mapping) throw new Error('Invalid mapping');
   
-      if (!positionMapper.validatePosition(filteredRow, filteredCol)) {
-        throw new Error('Invalid cell position');
-      }
-  
-      const { updatedOriginal, updatedTransposed, mapping } = positionMapper.updateCell(
-        filteredRow,
+      const { updatedOriginal, updatedTransposed } = positionMapper.updateCell(
+        filteredRow, 
         filteredCol,
         newValue
       );
   
-      // Handle data updates
+      // Update Customization to CHANGE
+      if (mapping.columnHeader.toLowerCase() !== 'customization') {
+        const customizationIndex = updatedOriginal[0].data.findIndex(
+          header => header.toLowerCase() === 'customization'
+        );
+        const rowIndex = mapping.original.row;
+        
+        if (customizationIndex !== -1 && updatedOriginal[rowIndex]) {
+          updatedOriginal[rowIndex].data[customizationIndex] = 'CHANGE';
+        }
+      }
+  
       setOriginalRows(updatedOriginal);
       setTransposedData(updatedTransposed);
   
@@ -197,28 +201,34 @@ export const CsvGrid = forwardRef<any, CsvGridProps>(({ initialData = [], onData
     }
   }, [headerRows, originalRows, originalHeaders, searchParams, toast]);
 
-  const handleAddRow = useCallback((fieldType: string) => {
+  const handleAddRow = useCallback((fieldType: string, label: string) => {
     try {
-      const { updatedOriginal, updatedTransposed, newFieldCode } = positionMapper.addRow(fieldType);
-
+      const { updatedOriginal, updatedTransposed, newFieldCode } = positionMapper.addRow(fieldType, label);
+  
+      const customizationIndex = updatedOriginal[0].data.findIndex(
+        header => header.toLowerCase() === 'customization'
+      );
+      if (customizationIndex !== -1) {
+        updatedOriginal[updatedOriginal.length - 1].data[customizationIndex] = 'NEW';
+      }
       setOriginalRows(updatedOriginal);
       setTransposedData(updatedTransposed);
-
+  
       if (fieldType === 'CAT') {
         setListTypes(prev => ({
           ...prev,
           [newFieldCode]: { type: 'Fixed', values: [] }
         }));
       }
-
+  
       toast({
         title: "Row Added",
-        description: `New field code: ${newFieldCode}`
+        description: `Added new field: ${label}`
       });
     } catch (error) {
       toast({
         title: "Add Failed",
-        description: error instanceof Error ? error.message : "Add failed",
+        description: error instanceof Error ? error.message : "Add failed", 
         variant: "destructive"
       });
     }
@@ -236,31 +246,31 @@ export const CsvGrid = forwardRef<any, CsvGridProps>(({ initialData = [], onData
           <table className="w-full border-separate border-spacing-0">
             <thead>
               <tr>
-                {originalRows.map((row, index) => {
-                  if (index === 1) return null;
-                  const header = row.data[3];
-                  const uniqueId = `header-${index}-${row.data[0]}`; // Generate unique ID for header
-                  return (
-                    <th 
-                      key={`header-${index}`} 
-                      className="sticky top-0 bg-[#1a1a1a] text-white font-medium text-left p-0 first:rounded-tl-lg z-30"
-                    >
-                      <EnhancedCsvCell
-                        value={header}
-                        isHeader={true}
-                        forceReadOnly={true}
-                        onChange={() => {}}
-                        mapping={{
-                          original: { row: index, col: 3 },
-                          transposed: { row: 3, col: index },
-                          fieldCode: row.data[0] || '',
-                          columnHeader: header.toLowerCase(),
-                          uniqueId // Add uniqueId to mapping
-                        }}
-                      />
-                    </th>
-                  );
-                })}
+              {originalRows.map((row, index) => {
+                if (index === 1) return null;
+                const header = row.data[3] || ''; // Add default empty string
+                const uniqueId = `header-${index}-${row.data[0]}`;
+                return (
+                  <th 
+                    key={`header-${index}`} 
+                    className="sticky top-0 bg-[#1a1a1a] text-white font-medium text-left p-0 first:rounded-tl-lg z-30"
+                  >
+                    <EnhancedCsvCell
+                      value={header}
+                      isHeader={true}
+                      forceReadOnly={true}
+                      onChange={() => {}}
+                      mapping={{
+                        original: { row: index, col: 3 },
+                        transposed: { row: 3, col: index },
+                        fieldCode: row.data[0] || '',
+                        columnHeader: (header || '').toLowerCase(), // Handle null/undefined
+                        uniqueId
+                      }}
+                    />
+                  </th>
+                );
+              })}
               </tr>
             </thead>
             <tbody>

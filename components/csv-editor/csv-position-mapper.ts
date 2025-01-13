@@ -219,18 +219,19 @@ export class CsvPositionMapper {
   
   
 
-  public addRow(fieldType: string): {
+  public addRow(fieldType: string, label:string): {
     updatedOriginal: CsvRow[];
     updatedTransposed: MappedCell[][];
     newFieldCode: string;
   } {
     const newFieldCode = this.generateNextFieldCode();
-    const newDataValue = `DATA_FIELD_${newFieldCode.replace('fieldCode', '')}`;
+    const newDataValue = label || `DATA_FIELD_${newFieldCode.replace('fieldCode', '')}`;
     
     const newRowData = new Array(this.headers.length).fill('');
     newRowData[0] = newFieldCode;
     newRowData[1] = fieldType;
     newRowData[2] = newDataValue;
+    newRowData[3] = label;
 
     const updatedOriginal = [
       ...this.originalData,
