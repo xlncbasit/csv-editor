@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import Papa from 'papaparse';
 
-const USER_DATA_PATH = 'data/users';
+const USER_DATA_PATH = 'FM/repo/verceldeploy/data/users';
 const CACHE_DURATION = 5 * 60 * 1000;
 const cache = new Map<string, { data: any; timestamp: number }>();
 

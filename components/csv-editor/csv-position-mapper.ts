@@ -24,10 +24,12 @@ export class CsvPositionMapper {
     transposedRow: number;
     transposedCol: number;
   }> = new Map();
+  private maxColumns: number;
 
   constructor(originalData: CsvRow[], headers: string[]) {
     this.originalData = originalData;
     this.headers = headers;
+    this.maxColumns = Math.max(...originalData.map(row => row.data.length), headers.length);
     this.initFieldCodeMap();
     this.generateMappings();
   }
@@ -50,8 +52,16 @@ export class CsvPositionMapper {
   private getMappingForOriginalPosition(originalRow: number, originalCol: number, fieldCode: string): CellMapping {
     const key = this.createMappingKey(originalRow, originalCol, fieldCode);
     const mapping = this.mappings.get(key);
+    
     if (!mapping) {
-      throw new Error(`No mapping found for original position ${originalRow},${originalCol}`);
+      return {
+        original: { row: originalRow, col: originalCol },
+        transposed: { row: originalCol, col: originalRow },
+        fieldCode: fieldCode,
+        columnHeader: this.headers[originalCol]?.toLowerCase() || '',
+        fieldType: this.originalData[originalRow]?.data[1] || '',
+        uniqueId: `${fieldCode}-${originalRow}-${originalCol}`
+      };
     }
     return mapping;
   }
@@ -59,8 +69,13 @@ export class CsvPositionMapper {
   private generateMappings() {
     this.mappings.clear();
     this.originalData.forEach((row, originalRow) => {
-      const fieldCode = row.data[0];
-      row.data.forEach((value, originalCol) => {
+      const fieldCode = row.data[0] || '';
+      const paddedData = [...row.data];
+      while (paddedData.length < this.maxColumns) {
+        paddedData.push('');
+      }
+
+      paddedData.forEach((value, originalCol) => {
         const mapping: CellMapping = {
           original: { row: originalRow, col: originalCol },
           transposed: { row: originalCol, col: originalRow },
