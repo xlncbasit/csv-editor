@@ -4,7 +4,7 @@ import fs from 'fs/promises';
 import { join } from 'path';
 import { cwd } from 'process';
 
-const USER_DATA_PATH = 'FM/repo/verceldeploy/data/users';
+const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
 
 export async function GET(request: Request) {
   try {
