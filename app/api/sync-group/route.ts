@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import { ConfigSyncManager } from '@/lib/configSync';
 
-const BASE_PATH = 'C:/Users/ASUS/erp-setup-tool - vercel/data/users';
+const BASE_PATH = '/FM/repo/verceldeploy/data/users';
 const syncManager = new ConfigSyncManager();
 
 interface FieldMapping {

@@ -7,7 +7,7 @@ import { ConfigSyncManager } from '@/lib/configSync';
 // Constants
 const TOMCAT_CONFIG_PATH = '/opt/tomcat/webapps/ROOT/upload/configfiles';
 const TOMCAT_CODESET_PATH = '/opt/tomcat/webapps/ROOT/upload/codefiles';
-const BASE_PATH = 'C:/Users/ASUS/erp-setup-tool - vercel/data/users';
+const BASE_PATH = '/FM/repo/verceldeploy/data/users';
 
 // Initialize sync manager
 const syncManager = new ConfigSyncManager();
@@ -298,3 +298,10 @@ export async function POST(request: Request) {
 }
 
 // Export additional utility functions for testing
+export const utils = {
+  validateCsvRow,
+  normalizeLineEndings,
+  logObject,
+  saveToLocation,
+  syncGroupConfigs
+};
