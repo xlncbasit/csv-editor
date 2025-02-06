@@ -6,9 +6,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  experimental: {
-    serverActions: true,
-  },
   webpack: (config) => {
     config.module.rules.push({
       test: /\.csv$/,

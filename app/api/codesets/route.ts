@@ -3,7 +3,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import Papa from 'papaparse';
 
-const USER_DATA_PATH = '/FM/repo/verceldeploy/data/users';
+const USER_DATA_PATH = 'C:/Users/ASUS/erp-setup-tool - vercel/data/users';
 const CACHE_DURATION = 5 * 60 * 1000;
 const cache = new Map<string, { data: any; timestamp: number }>();
 
@@ -43,8 +43,8 @@ class CSVProcessor {
     console.log('Starting CSV parse operation for:', filePath);
     try {
       const lines = await this.readFile(filePath);
-      const headerLines = lines.slice(0, 4);
-      const dataLines = lines.slice(3);
+      const headerLines = lines.slice(0, 3);
+      const dataLines = lines.slice(2);
       console.log('Headers:', headerLines);
       console.log(`Processing ${dataLines.length} data lines`);
 

@@ -54,3 +54,14 @@ export interface CsvRow {
     listValue?: string;
     
   }
+
+  export interface GridRef {
+    handleAddRow: (fieldType: string, label: string, shouldSync: boolean) => Promise<void>;
+    handleSave: () => Promise<void>;
+  }
+
+  export interface CellUpdateResult {
+    updatedOriginal: CsvRow[];
+    updatedTransposed: MappedCell[][];
+    mapping?: CellMapping;
+  }

@@ -64,10 +64,20 @@ export function parseCsvLine(line: string): string[] {
 export function parseCsvString(csvContent: string): ParseCsvResult {
   try {
     console.log('Parsing CSV content:', csvContent.substring(0, 100));
-    const lines = csvContent
+    const allLines = csvContent
       .split(/\r?\n/)
+      .map(line => line.trim());
     
-    console.log('Number of lines:', lines.length);
+    console.log('Number of lines:', allLines.length);
+
+    const firstContentIndex = allLines.findIndex(line => line.length > 0);
+    if (firstContentIndex === -1) {
+      return { headers: [], rows: [], headerRows: [] };
+    }
+
+    // Get actual content lines, skipping empty lines at start
+    const lines = allLines.slice(firstContentIndex);
+    console.log('Number of content lines:', lines.length);
       
     
     if (!lines.length) {
@@ -81,12 +91,15 @@ export function parseCsvString(csvContent: string): ParseCsvResult {
     
     // Parse data rows starting from 4th row (index 3)
     const rows = lines.slice(2).map((line, index) => {
+      if (!line.trim()) {
+        return null; // Skip empty lines within data
+      }
       const fields = parseCsvLine(line);
       return {
         id: `row-${index}`,
         data: fields
       };
-    });
+    }).filter(row => row !== null);
 
 
     return { headers, rows, headerRows };

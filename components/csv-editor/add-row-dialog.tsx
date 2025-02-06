@@ -5,8 +5,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { useGroupSync } from '@/hooks/use-group-sync';
 
 const FIELD_TYPES = [
   'TAG', 'NAM', 'QTY', 'CAT', 
@@ -14,20 +17,32 @@ const FIELD_TYPES = [
 ];
 
 interface AddRowDialogProps {
-  onAddRow: (fieldType: string, label:string) => void;
+  onAddRow: (fieldType: string, label: string, syncWithGroup: boolean) => void;
 }
 
 export function AddRowDialog({ onAddRow }: AddRowDialogProps) {
   const [selectedType, setSelectedType] = useState('');
   const [label, setLabel] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [syncWithGroup, setSyncWithGroup] = useState(false);
+  const { syncing } = useGroupSync();
+  const { toast } = useToast();
 
   const handleAddRow = () => {
     if (selectedType && label.trim()) {
-      onAddRow(selectedType, label.trim());
-      setDialogOpen(false);
-      setSelectedType('');
-      setLabel('');
+      try {
+        onAddRow(selectedType, label.trim(), syncWithGroup);
+        setDialogOpen(false);
+        setSelectedType('');
+        setLabel('');
+        setSyncWithGroup(false);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to add field",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -90,7 +105,30 @@ export function AddRowDialog({ onAddRow }: AddRowDialogProps) {
               className="w-full border focus:ring-2 focus:ring-gray-200"
             />
           </div>
+          
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox 
+              id="sync-group"
+              checked={syncWithGroup}
+              onCheckedChange={(checked) => setSyncWithGroup(checked as boolean)}
+              disabled={syncing}
+            />
+            <Label 
+              htmlFor="sync-group"
+              className="text-sm text-gray-600"
+            >
+              Sync this field with group configurations
+              {syncing && <span className="ml-2 text-blue-500">(Syncing...)</span>}
+            </Label>
+          </div>
+          
+          {syncWithGroup && (
+            <div className="text-sm text-gray-500 bg-blue-50 p-3 rounded-md">
+              This will add the field to all related configurations in the same group.
+            </div>
+          )}
         </div>
+        
         <DialogFooter className="pt-4 border-t gap-2">
           <Button 
             variant="outline" 
@@ -98,17 +136,19 @@ export function AddRowDialog({ onAddRow }: AddRowDialogProps) {
               setDialogOpen(false);
               setSelectedType('');
               setLabel('');
+              setSyncWithGroup(false);
             }}
             className="bg-white hover:bg-gray-50"
+            disabled={syncing}
           >
             Cancel
           </Button>
           <Button 
             onClick={handleAddRow}
-            disabled={!selectedType || !label.trim()}
+            disabled={!selectedType || !label.trim() || syncing}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            Add Field
+            {syncing ? 'Adding...' : 'Add Field'}
           </Button>
         </DialogFooter>
       </DialogContent>

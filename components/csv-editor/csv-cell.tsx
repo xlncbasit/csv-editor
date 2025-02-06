@@ -232,13 +232,14 @@ export function EnhancedCsvCell({
     );
   }
 
+  
   const cellClassName = cn(
     'px-3 py-2 min-w-[150px] h-[36px] w-full truncate whitespace-nowrap',
     {
       'hidden': ['Link Setup', 'Update Setup', 'multi_group', 'hidden'].includes(value.toLowerCase()),
       'bg-[#dee2e6] text-sm cursor-not-allowed': isNonEditable && mapping.original.row !== 1 && mapping.original.row !== 0,
       'cursor-not-allowed': isNonEditable,
-      'font-bold': isHeader,
+      'font-small': isHeader,
       'bg-black text-white hover:bg-black/90': forceReadOnly,
       'bg-[#3A53A3] text-white': mapping.original.col === 0 && mapping.original.row !== 1 && !value.startsWith('fieldCode'),
       'bg-[#dee2e6]': mapping.original.col === 0 && value.startsWith('fieldCode'),
