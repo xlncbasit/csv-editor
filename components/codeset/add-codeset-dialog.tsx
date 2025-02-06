@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useSearchParams } from 'next/navigation';
-import { Label } from '@/components/ui/label';
 import { useCodesetManager } from '@/hooks/use-codeset-manager';
-import { Loader2 } from 'lucide-react';
 
 interface AddCodesetDialogProps {
   open: boolean;
@@ -36,41 +37,38 @@ export function AddCodesetDialog({
     generateNextFieldNumber,
     validateFieldNumber,
     reset,
-    loading: fieldsLoading 
   } = useCodesetManager();
 
-  // Auto-generate field number when dialog opens
+  const generateFieldNumber = useCallback(async () => {
+    try {
+      const org_key = searchParams.get('org_key');
+      const module_key = searchParams.get('module_key');
+      
+      if (!org_key || !module_key) {
+        throw new Error('Missing required parameters');
+      }
+
+      const existingFields = await fetchExistingCodesets(org_key, module_key);
+      const nextField = generateNextFieldNumber(existingFields);
+      
+      setNewCodeset(prev => ({
+        ...prev,
+        field: nextField
+      }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to generate field number';
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive"
+      });
+    }
+  }, [fetchExistingCodesets, generateNextFieldNumber, searchParams, toast]);
+
   useEffect(() => {
     if (open) {
-      const loadNextField = async () => {
-        try {
-          const org_key = searchParams.get('org_key');
-          const module_key = searchParams.get('module_key');
-          
-          if (!org_key || !module_key) {
-            throw new Error('Missing required parameters');
-          }
-
-          const existingFields = await fetchExistingCodesets(org_key, module_key);
-          const nextField = generateNextFieldNumber(existingFields);
-          
-          setNewCodeset(prev => ({
-            ...prev,
-            field: nextField
-          }));
-        } catch (error) {
-          console.error('Error loading field number:', error);
-          toast({
-            title: "Error",
-            description: "Failed to generate field number",
-            variant: "destructive"
-          });
-        }
-      };
-      
-      loadNextField();
+      generateFieldNumber();
     } else {
-      // Reset form when dialog closes
       setNewCodeset({
         field: '',
         Type: '',
@@ -81,7 +79,7 @@ export function AddCodesetDialog({
       });
       reset();
     }
-  }, [open]);
+  }, [open, generateFieldNumber, reset]);
 
   const handleSubmit = async () => {
     try {
@@ -138,7 +136,6 @@ export function AddCodesetDialog({
               value={newCodeset.field}
               readOnly
               className="bg-gray-50 cursor-not-allowed font-mono"
-              placeholder={fieldsLoading ? "Generating..." : "Auto-generated"}
             />
           </div>
           
@@ -185,12 +182,10 @@ export function AddCodesetDialog({
         <DialogFooter>
           <Button
             onClick={handleSubmit}
-            disabled={loading || fieldsLoading || !newCodeset.Type || !newCodeset.Code}
+            disabled={loading || !newCodeset.Type || !newCodeset.Code}
             className="w-full"
           >
-            {(loading || fieldsLoading) && (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            )}
+            {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Add Codeset
           </Button>
         </DialogFooter>
