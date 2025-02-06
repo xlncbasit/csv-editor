@@ -298,10 +298,3 @@ export async function POST(request: Request) {
 }
 
 // Export additional utility functions for testing
-export const utils = {
-  validateCsvRow,
-  normalizeLineEndings,
-  logObject,
-  saveToLocation,
-  syncGroupConfigs
-};
